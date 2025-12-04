@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Çizgiden Kaçış — Full</title>
+<style>
+:root{
+  --bg1:#07102a; --bg2:#0b2a44; --accent:#00e6a8; --card: rgba(255,255,255,0.04);
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:Inter,Arial,Helvetica,sans-serif;background:linear-gradient(180deg,var(--bg1),var(--bg2));color:#fff;display:flex;align-items:center;justify-content:center}
+#wrap{width:420px;max-width:96vw;height:780px;border-radius:14px;overflow:hidden;position:relative;box-shadow:0 20px 60px rgba(0,0,0,0.6);background:linear-gradient(180deg,#07102a,#0b2a44)}
+canvas{display:block;width:100%;height:100%;touch-action:none;-webkit-user-select:none;user-select:none;background:transparent}
+.hud{position:absolute;top:12px;left:12px;z-index:60;display:flex;gap:10px;align-items:center}
+.chip{background:var(--card);padding:8px 12px;border-radius:10px;font-weight:700}
+.controls{position:absolute;top:12px;right:12px;z-index:60;display:flex;gap:8px}
+.ctrl{background:var(--card);border:1px solid rgba(255,255,255,0.03);padding:8px 10px;border-radius:8px;color:#fff;cursor:pointer}
+.overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:80;background:linear-gradient(180deg,rgba(2,6,20,0.6),rgba(2,6,20,0.6))}
+.card{background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));padding:18px;border-radius:12px;width:88%;max-width:420px;text-align:center;border:1px solid rgba(255,255,255,0.04)}
+.big{padding:12px 18px;border-radius:12px;border:none;background:linear-gradient(90deg,var(--accent),#00b38f);color:#042;font-weight:800;cursor:pointer}
+.mini{margin-top:8px;padding:8px 12px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.04);cursor:pointer;color:#fff}
+.touchRow{position:absolute;bottom:18px;left:0;right:0;display:flex;gap:12px;justify-content:space-between;padding:0 18px;z-index:70;pointer-events:none}
+.tbtn{width:48%;background:rgba(255,255,255,0.02);padding:14px;border-radius:12px;text-align:center;font-weight:800;pointer-events:auto}
+.small{font-size:13px;color:#cfe9f5}
+.shopGrid{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:12px}
+.shopItem{background:rgba(255,255,255,0.03);padding:10px;border-radius:10px;width:96px;text-align:center}
+.leader{font-size:13px;color:#cfe9f5;margin-top:8px;text-align:left;max-height:120px;overflow:auto}
+.themeBtn{margin:6px 4px;padding:6px 10px;border-radius:8px;border:none;cursor:pointer}
+.footerSmall{font-size:12px;color:rgba(255,255,255,0.65);margin-top:8px}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="c" width="420" height="780"></canvas>
+
+  <div class="hud" aria-hidden>
+    <div class="chip">Skor: <span id="score">0</span></div>
+    <div class="chip">Altın: <span id="gold">100</span></div>
+    <div class="chip">En Yüksek: <span id="best">0</span></div>
+  </div>
+
+  <div class="controls">
+    <button id="pauseBtn" class="ctrl">Dur</button>
+    <button id="stopBtn" class="ctrl">Ana Menü</button>
+    <button id="shopBtn" class="ctrl">Mağaza</button>
+    <button id="settingsBtn" class="ctrl">⚙️</button>
+  </div>
+
+  <div class="touchRow">
+    <div id="leftTouch" class="tbtn">◀</div>
+    <div id="rightTouch" class="tbtn">▶</div>
+  </div>
+
+  <!-- START -->
+  <div id="start" class="overlay">
+    <div class="card">
+      <h2 style="margin:6px 0 6px 0">Çizgiden Kaçış</h2>
+      <p class="small">Ekranın üstünden yatay çizgi engeller iniyor. Karakteri sola-sağa kaydırıp tam çarpmadan kaç.</p>
+      <div style="margin-top:12px">
+        <button id="startBtn" class="big">Başla</button>
+      </div>
+      <div class="footerSmall">Dokunmatik: sürükle veya butonlar ◀ ▶ kullan</div>
+    </div>
+  </div>
+
+  <!-- SHOP -->
+  <div id="shop" class="overlay" style="display:none">
+    <div class="card">
+      <h3>Mağaza & Skinler</h3>
+      <div style="margin-top:8px">Altın: <span id="shopGold">100</span></div>
+      <div class="shopGrid" id="shopGrid"></div>
+      <div style="margin-top:12px">
+        <button id="closeShop" class="mini">Kapat</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div id="settings" class="overlay" style="display:none">
+    <div class="card">
+      <h3>Ayarlar</h3>
+      <div style="margin-top:8px">Ses: <input id="vol" type="range" min="0" max="1" step="0.05" value="0.6" style="width:70%"></div>
+      <div style="margin-top:10px">Tema:
+        <div style="margin-top:8px">
+          <button class="themeBtn" data-theme="default">Varsayılan</button>
+          <button class="themeBtn" data-theme="neon">Neon</button>
+          <button class="themeBtn" data-theme="retro">Retro</button>
+        </div>
+      </div>
+      <div style="margin-top:12px"><button id="closeSettings" class="mini">Kapat</button></div>
+    </div>
+  </div>
+
+  <!-- GAME OVER -->
+  <div id="gameOver" class="overlay" style="display:none">
+    <div class="card">
+      <h3>Oyun Bitti</h3>
+      <p>Skor: <strong id="finalScore">0</strong></p>
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:8px">
+        <button id="retry" class="big">Tekrar Oyna</button>
+        <button id="menu" class="mini">Ana Menü</button>
+      </div>
+      <div class="leader" id="leaderboard"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ========= GAME: Çizgiden Kaçış — Full ========= */
+const canvas = document.getElementById('c'), ctx = canvas.getContext('2d');
+let W = canvas.width, H = canvas.height;
+
+const scoreEl = document.getElementById('score'), goldEl = document.getElementById('gold'), bestEl = document.getElementById('best'), shopGold = document.getElementById('shopGold');
+const startOverlay = document.getElementById('start'), shopOverlay = document.getElementById('shop'), settingsOverlay = document.getElementById('settings'), gameOverOverlay = document.getElementById('gameOver');
+
+let state = {
+  running:false, paused:false, score:0,
+  best: Number(localStorage.getItem('best')||0),
+  gold: Number(localStorage.getItem('gold')||100),
+  level:1,
+  obstacles:[], coins:[], particles:[],
+  skins:[{emoji:'🐶',cost:0},{emoji:'🐱',cost:100},{emoji:'🦊',cost:150},{emoji:'🐼',cost:200},{emoji:'🤖',cost:300}],
+  owned: JSON.parse(localStorage.getItem('owned')||'[0]'),
+  selected: Number(localStorage.getItem('selected')||0)
+};
+
+bestEl.textContent = state.best; goldEl.textContent = state.gold; shopGold.textContent = state.gold;
+
+/* player */
+let player = { x: W/2 - 28, y: H - 120, size: 56, emoji: state.skins[state.selected].emoji };
+
+/* audio (basic music + sfx using oscillator) */
+let audioCtx, masterGain, musicOsc;
+function initAudio(){
+  if(audioCtx) return;
+  audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+  masterGain = audioCtx.createGain(); masterGain.gain.value = 0.6; masterGain.connect(audioCtx.destination);
+  // background simple chord loop (soft)
+  musicOsc = [];
+  const freqs = [220, 277.18, 329.63]; // A2, C#3, E3
+  freqs.forEach((f,i)=>{
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = 'sine'; o.frequency.value = f;
+    o.connect(g); g.connect(masterGain);
+    g.gain.value = 0;
+    o.start();
+    musicOsc.push({o,g,phase:i*0.6});
+  });
+  // ramp in
+  let t = 0;
+  setInterval(()=>{
+    if(!state.running) { musicOsc.forEach(m=>m.gain.gain.exponentialRampToValueAtTime(0.0001,audioCtx.currentTime+0.6)); return; }
+    musicOsc.forEach((m,idx)=> m.gain.gain.linearRampToValueAtTime(0.015 + (idx*0.005), audioCtx.currentTime+0.2));
+  },500);
+}
+function playSfx(freq=800,len=0.08,vol=0.06){
+  if(!audioCtx) return;
+  const o = audioCtx.createOscillator(), g=audioCtx.createGain();
+  o.connect(g); g.connect(masterGain);
+  o.frequency.value = freq; g.gain.value = vol; o.start();
+  g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + len);
+  setTimeout(()=>o.stop(), len*1000+30);
+}
+
+/* helpers */
+function rand(a,b){ return a + Math.random()*(b-a); }
+function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+function rectIntersect(a,b){ return !(b.x > a.x + a.w || b.x + b.w < a.x || b.y > a.y + a.h || b.y + b.h < a.y); }
+function directOverlap(a,b,thresholdRatio=0.25){
+  const ax=a.x, ay=a.y, aw=a.w||a.size, ah=a.h||a.size;
+  const bx=b.x, by=b.y, bw=b.w||b.size, bh=b.h||b.size;
+  const ox = Math.max(0, Math.min(ax+aw, bx+bw) - Math.max(ax,bx));
+  const oy = Math.max(0, Math.min(ay+ah, by+bh) - Math.max(ay,by));
+  const overlap = ox*oy, minArea = Math.min(aw*ah, bw*bh);
+  return overlap >= (thresholdRatio * minArea);
+}
+
+/* spawn functions (line obstacles + coin + moving zigzag) */
+function spawnLine(){
+  const w = Math.floor(W * rand(0.25,0.55));
+  const h = Math.floor(rand(6,14));
+  const x = Math.random()*(W - w);
+  const y = -h - 10;
+  const speed = rand(0.6 + state.level*0.02, 1.4 + state.level*0.03);
+  state.obstacles.push({type:'line', x,y,w,h,speed});
+}
+function spawnMoving(){
+  // horizontal moving short line that oscillates while descending
+  const w = Math.floor(W * rand(0.18,0.36));
+  const h = Math.floor(rand(6,12));
+  const x = Math.random()*(W - w);
+  const y = -h - 10;
+  const speed = rand(0.8 + state.level*0.02, 1.8 + state.level*0.03);
+  const amp = rand(30, 80), freq = rand(0.002,0.009);
+  state.obstacles.push({type:'move', x,y,w,h,speed,amp,freq,baseX:x});
+}
+function spawnZig(){
+  // zigzag: multiple small segments grouped
+  const segments = 3 + Math.floor(Math.random()*3);
+  const totalW = Math.floor(W * rand(0.35,0.65));
+  const segW = Math.floor(totalW / segments);
+  const x = Math.random()*(W - totalW);
+  const y = -14;
+  const speed = rand(0.9 + state.level*0.02, 2 + state.level*0.03);
+  for(let i=0;i<segments;i++){
+    const sx = x + i*segW + rand(-6,6);
+    const sy = y - i*12; // staggered vertically slightly
+    state.obstacles.push({type:'seg', x:sx, y:sy, w:segW-6, h:8, speed, offset:i});
+  }
+}
+function spawnCoin(){
+  const size = 18;
+  const x = Math.random()*(W - size);
+  const y = -size - 6;
+  const speed = rand(0.6,1.4);
+  state.coins.push({x,y,size,speed});
+}
+
+/* spawn scheduling */
+let spawnTimer=0, coinTimer=0;
+function scheduleSpawn(dt){
+  spawnTimer += dt; coinTimer += dt;
+  const obsInterval = Math.max(520, 1200 - state.level*22);
+  const coinInterval = Math.max(900, 1800 - state.level*30);
+  if(spawnTimer > obsInterval){
+    spawnTimer = 0;
+    const r = Math.random();
+    if(r < 0.55) spawnLine();
+    else if(r < 0.78) spawnMoving();
+    else spawnZig();
+  }
+  if(coinTimer > coinInterval){ coinTimer = 0; if(Math.random()<0.8) spawnCoin(); }
+}
+
+/* input (pointer drag, touch, keyboard, onscreen) */
+canvas.style.touchAction = 'none';
+let dragging=false;
+canvas.addEventListener('pointerdown', e=>{ initAudio(); dragging=true; });
+canvas.addEventListener('pointerup', e=>{ dragging=false; });
+canvas.addEventListener('pointercancel', ()=>dragging=false);
+canvas.addEventListener('pointermove', e=>{
+  if(!state.running || state.paused) return;
+  if(e.pointerType==='mouse' || e.pointerType==='pen' || dragging){
+    const r = canvas.getBoundingClientRect();
+    const px = e.clientX - r.left;
+    player.x = clamp(px - player.size/2, 0, W - player.size);
+  }
+});
+document.addEventListener('touchmove', e=>{
+  if(!state.running || state.paused) return;
+  const t = e.touches[0];
+  const r = canvas.getBoundingClientRect();
+  const px = t.clientX - r.left;
+  player.x = clamp(px - player.size/2, 0, W - player.size);
+}, {passive:false});
+document.addEventListener('keydown', e=>{
+  if(!state.running) return;
+  if(e.key==='ArrowLeft') player.x = clamp(player.x - 48, 0, W-player.size);
+  if(e.key==='ArrowRight') player.x = clamp(player.x + 48, 0, W-player.size);
+});
+
+/* onscreen mobile buttons */
+const leftTouch = document.getElementById('leftTouch'), rightTouch = document.getElementById('rightTouch');
+let leftHeld=false, rightHeld=false;
+leftTouch.addEventListener('pointerdown', ()=>leftHeld=true); leftTouch.addEventListener('pointerup', ()=>leftHeld=false);
+rightTouch.addEventListener('pointerdown', ()=>rightHeld=true); rightTouch.addEventListener('pointerup', ()=>rightHeld=false);
+
+/* UI bindings */
+document.getElementById('startBtn').addEventListener('click', ()=>{ initAudio(); startGame(); });
+document.getElementById('pauseBtn').addEventListener('click', ()=>{ state.paused = !state.paused; document.getElementById('pauseBtn').textContent = state.paused ? 'Devam' : 'Dur'; if(state.paused) playSfx(200,0.12,0.04); else playSfx(800,0.06,0.04); });
+document.getElementById('stopBtn').addEventListener('click', ()=>{ goMenu(); });
+document.getElementById('shopBtn').addEventListener('click', ()=>openShop());
+document.getElementById('closeShop').addEventListener('click', ()=>shopOverlay.style.display='none');
+document.getElementById('closeSettings').addEventListener('click', ()=>settingsOverlay.style.display='none');
+
+document.getElementById('retry').addEventListener('click', ()=>{ resetAndStart(); });
+document.getElementById('menu').addEventListener('click', ()=>{ goMenu(); });
+
+document.getElementById('vol').addEventListener('input', e=>{
+  const v = Number(e.target.value);
+  if(masterGain) masterGain.gain.value = v;
+});
+
+/* theme buttons */
+document.querySelectorAll('.themeBtn').forEach(b=>{
+  b.addEventListener('click', ()=>{ applyTheme(b.dataset.theme); });
+});
+function applyTheme(t){
+  if(t==='neon'){ document.documentElement.style.setProperty('--bg1','#020014'); document.documentElement.style.setProperty('--bg2','#001a2d'); document.documentElement.style.setProperty('--accent','#ff00d0'); }
+  else if(t==='retro'){ document.documentElement.style.setProperty('--bg1','#2b0b3a'); document.documentElement.style.setProperty('--bg2','#8b3a3a'); document.documentElement.style.setProperty('--accent','#ffd138'); }
+  else { document.documentElement.style.setProperty('--bg1','#07102a'); document.documentElement.style.setProperty('--bg2','#0b2a44'); document.documentElement.style.setProperty('--accent','#00e6a8'); }
+}
+
+/* shop rendering & buy */
+const shopGrid = document.getElementById('shopGrid');
+function openShop(){
+  shopOverlay.style.display='flex';
+  shopGold.textContent = state.gold;
+  shopGrid.innerHTML = '';
+  state.skins.forEach((s,i)=>{
+    const div = document.createElement('div'); div.className='shopItem';
+    const owned = state.owned.includes(i);
+    div.innerHTML = `<div style="font-size:28px">${s.emoji}</div><div class="small">${s.cost} Altın</div>`;
+    const btn = document.createElement('button'); btn.className='mini';
+    btn.textContent = owned ? (state.selected===i ? 'Seçili' : 'Seç') : 'Satın Al';
+    btn.onclick = ()=>{
+      if(owned){ state.selected = i; player.emoji = state.skins[i].emoji; localStorage.setItem('selected', state.selected); alert('Seçildi'); }
+      else { if(state.gold >= s.cost){ state.gold -= s.cost; state.owned.push(i); localStorage.setItem('gold', state.gold); localStorage.setItem('owned', JSON.stringify(state.owned)); shopGold.textContent = state.gold; goldEl.textContent = state.gold; btn.textContent='Seç'; alert('Satın alındı'); } else alert('Altın yetersiz'); }
+    };
+    div.appendChild(btn); shopGrid.appendChild(div);
+  });
+}
+
+/* main loop */
+let last=0;
+function startGame(){
+  startOverlay.style.display='none'; shopOverlay.style.display='none'; settingsOverlay.style.display='none'; gameOverOverlay.style.display='none';
+  state.running = true; state.paused = false; state.score = 0; state.level = 1; state.obstacles=[]; state.coins=[]; state.particles=[];
+  player.x = W/2 - player.size/2; player.emoji = state.skins[state.selected].emoji;
+  last = performance.now(); loop(last);
+}
+function resetAndStart(){
+  state.obstacles=[]; state.coins=[]; state.particles=[]; state.score=0; state.level=1; state.running=true; state.paused=false;
+  player.x = W/2 - player.size/2; last = performance.now(); loop(last);
+}
+function goMenu(){
+  state.running = false; state.paused = false;
+  document.getElementById('start').style.display='flex';
+}
+
+/* loop */
+function loop(ts){
+  if(!state.running) return;
+  requestAnimationFrame(loop);
+  const dt = Math.min(40, ts - last); last = ts;
+  if(state.paused) return;
+
+  // mobile held buttons
+  if(leftHeld) player.x = clamp(player.x - 6 * (dt/16), 0, W-player.size);
+  if(rightHeld) player.x = clamp(player.x + 6 * (dt/16), 0, W-player.size);
+  if(leftTouch && leftHeld) player.x = clamp(player.x - 6 * (dt/16), 0, W-player.size);
+  if(rightTouch && rightHeld) player.x = clamp(player.x + 6 * (dt/16), 0, W-player.size);
+
+  scheduleSpawn(dt);
+
+  // update obstacles
+  for(let i=state.obstacles.length-1;i>=0;i--){
+    let o = state.obstacles[i];
+    if(o.type==='line'){ o.y += o.speed * (dt/16); o.speed = Math.min(6, o.speed + 0.0008*state.score); }
+    else if(o.type==='move'){ o.y += o.speed * (dt/16); o.x = o.baseX + Math.sin((ts*o.freq) + (o.offset||0)) * o.amp; o.speed = Math.min(6, o.speed + 0.0008*state.score); }
+    else if(o.type==='seg'){ o.y += o.speed * (dt/16); o.speed = Math.min(5, o.speed + 0.0008*state.score); }
+
+    if(o.y > H + 80){ state.obstacles.splice(i,1); state.score += 1; scoreEl.textContent = Math.floor(state.score); if(state.score % 10 === 0) state.level++; continue; }
+
+    const pRect = {x:player.x, y:player.y, w:player.size, h:player.size};
+    const oRect = {x:o.x, y:o.y, w:o.w, h:o.h};
+    if(directOverlap(pRect,oRect,0.25)){ doGameOver(); return; }
+  }
+
+  // coins
+  for(let i=state.coins.length-1;i>=0;i--){
+    const c = state.coins[i];
+    c.y += c.speed * (dt/16);
+    if(c.y > H + 40){ state.coins.splice(i,1); continue; }
+    const cr = {x:c.x,y:c.y,w:c.size,h:c.size}, pr={x:player.x,y:player.y,w:player.size,h:player.size};
+    if(rectIntersect(cr,pr)){ state.gold++; localStorage.setItem('gold', state.gold); goldEl.textContent = state.gold; shopGold.textContent = state.gold; playSfx(1200,0.06); state.coins.splice(i,1); }
+  }
+
+  // particles
+  for(let i=state.particles.length-1;i>=0;i--){ const p=state.particles[i]; p.x += p.vx*(dt/16); p.y += p.vy*(dt/16); p.life -= (dt/16); if(p.life<=0) state.particles.splice(i,1); }
+
+  drawScene();
+}
+
+/* draw */
+function drawScene(){
+  ctx.clearRect(0,0,W,H);
+
+  // animated gradient background
+  const t = Date.now()*0.0004;
+  const g = ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0, getComputedStyle(document.documentElement).getPropertyValue('--bg1').trim()||'#07102a');
+  g.addColorStop(1, getComputedStyle(document.documentElement).getPropertyValue('--bg2').trim()||'#0b2a44');
+  ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+
+  // parallax horizontal soft lines
+  for(let i=0;i<14;i++){
+    ctx.fillStyle = 'rgba(255,255,255,'+(0.01 + Math.sin(t*(i+1))*0.01)+')';
+    ctx.fillRect((i*38 + (t*60)) % (W+60) - 30, H*0.62, 3, H*0.38);
+  }
+
+  // coins
+  state.coins.forEach(c=>{
+    ctx.font = `${c.size}px "Segoe UI Emoji"`; ctx.textBaseline='middle'; ctx.fillText('🪙', c.x, c.y + c.size*0.35);
+  });
+
+  // obstacles drawing
+  state.obstacles.forEach(o=>{
+    const grad = ctx.createLinearGradient(o.x,o.y,o.x+o.w,o.y);
+    grad.addColorStop(0,'rgba(255,120,0,0.95)'); grad.addColorStop(1,'rgba(255,60,0,0.6)');
+    ctx.fillStyle = grad; ctx.fillRect(o.x,o.y,o.w,o.h);
+    ctx.fillStyle='rgba(255,255,255,0.03)'; ctx.fillRect(o.x,o.y, o.w, Math.max(1,Math.floor(o.h/4)));
+  });
+
+  // player (emoji)
+  ctx.font = `${player.size}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji"`; ctx.textBaseline='middle';
+  ctx.fillText(player.emoji, player.x, player.y + player.size*0.35);
+
+  // particles
+  state.particles.forEach(p=>{ ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,Math.PI*2); ctx.fill(); });
+
+  // HUD numbers already in DOM (fast)
+}
+
+/* game over */
+function doGameOver(){
+  state.running = false;
+  // leaderboard
+  const lb = JSON.parse(localStorage.getItem('lb')||'[]');
+  lb.push({score: Math.floor(state.score), date: new Date().toLocaleString()});
+  lb.sort((a,b)=>b.score-a.score); while(lb.length>10) lb.pop(); localStorage.setItem('lb', JSON.stringify(lb));
+  if(Math.floor(state.score) > state.best){ state.best = Math.floor(state.score); localStorage.setItem('best', state.best); bestEl.textContent = state.best; }
+  document.getElementById('finalScore').textContent = Math.floor(state.score);
+  document.getElementById('finalHigh').textContent = state.best;
+  const lead = JSON.parse(localStorage.getItem('lb')||'[]').map((r,i)=>(i+1)+'. '+r.score).join('<br>');
+  document.getElementById('leaderboard').innerHTML = lead;
+  gameOverOverlay.style.display='flex';
+  document.getElementById('retry').focus();
+  playSfx(120,0.4);
+}
+
+/* init preview spawns */
+for(let i=0;i<3;i++) spawnLine();
+for(let i=0;i<2;i++) spawnCoin();
+drawScene();
+
+/* expose debug */
+window._state = state;
+window.startGame = startGame;
+window.resetAndStart = resetAndStart;
+window.goMenu = goMenu;
+window.restartGame = resetAndStart;
+
+/* Resize handler */
+window.addEventListener('resize', ()=>{
+  // keep canvas size stable to wrap dimensions
+  canvas.width = document.getElementById('wrap').clientWidth;
+  canvas.height = document.getElementById('wrap').clientHeight;
+  W = canvas.width; H = canvas.height;
+  player.x = clamp(player.x, 0, W-player.size);
+  player.y = H - 120;
+  drawScene();
+});
+
+/* small utility clamps used above */
+function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+
+</script>
+</body>
+</html>
