@@ -1,573 +1,263 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="tr">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Çizgiden Kaçış — Efsane Sürüm</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Çizgiden Kaçış</title>
 <style>
-  :root{
-    --bg1:#071029; --bg2:#0b2f4f; --accent:#ffd138; --muted:rgba(255,255,255,0.85);
-  }
-  *{box-sizing:border-box}
-  html,body{height:100%;margin:0;font-family:Inter,Arial,Helvetica,sans-serif;background:linear-gradient(180deg,var(--bg1),var(--bg2));color:#fff;overflow:hidden}
-  #app{width:100%;height:100%;position:relative}
+    body {
+        margin: 0;
+        overflow: hidden;
+        background: linear-gradient(120deg, #4e54c8, #8f94fb);
+        background-size: 400% 400%;
+        animation: bgMove 12s ease infinite;
+        font-family: Arial, sans-serif;
+        user-select: none;
+    }
+    @keyframes bgMove {
+        0% {background-position: 0% 50%;}
+        50% {background-position: 100% 50%;}
+        100% {background-position: 0% 50%;}
+    }
 
-  /* Canvas area */
-  #wrap{width:420px;max-width:96vw;height:760px;margin:18px auto;border-radius:14px;overflow:hidden;position:relative;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.08));box-shadow:0 18px 50px rgba(0,0,0,0.6)}
-  canvas{display:block;width:100%;height:100%;background:transparent}
+    #gameCanvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+    }
 
-  /* HUD */
-  .hud{position:absolute;left:12px;top:12px;z-index:80;display:flex;flex-direction:column;gap:6px}
-  .chip{background:rgba(0,0,0,0.35);padding:8px 10px;border-radius:10px;font-weight:700;backdrop-filter: blur(2px)}
-  .controls{position:absolute;right:12px;top:12px;z-index:80;display:flex;gap:8px}
-  .btn{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.04);padding:8px 10px;border-radius:8px;color:#fff;cursor:pointer}
+    #mainMenu {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        color: black;
+        background: white;
+        background-image: repeating-linear-gradient(
+            45deg,
+            #eaeaea 0px,
+            #eaeaea 10px,
+            #ffffff 10px,
+            #ffffff 20px
+        );
+    }
 
-  /* overlays */
-  .overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:90;background:linear-gradient(180deg,rgba(2,6,20,0.55),rgba(2,6,20,0.65))}
-  .card{background:rgba(255,255,255,0.03);padding:18px;border-radius:14px;width:86%;max-width:420px;text-align:center;border:1px solid rgba(255,255,255,0.04)}
-  .bigBtn{padding:12px 20px;border-radius:12px;border:none;background:linear-gradient(90deg,var(--accent),#f7b500);color:#042;font-weight:800;cursor:pointer;font-size:18px}
-  .mini{padding:8px 12px;border-radius:10px;border:none;background:rgba(255,255,255,0.03);color:#fff;cursor:pointer;margin:6px}
+    .menuBtn {
+        padding: 16px 35px;
+        background: #ffb400;
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-size: 28px;
+        margin: 10px;
+        cursor: pointer;
+        box-shadow:0 4px 10px rgba(0,0,0,0.4);
+    }
 
-  /* touch */
-  #touchControls{position:absolute;left:12px;right:12px;bottom:18px;display:flex;gap:12px;justify-content:space-between;padding:0 10px;z-index:85}
-  .touchBtn{flex:1;background:rgba(255,255,255,0.03);padding:14px;border-radius:12px;text-align:center;font-weight:800;cursor:pointer}
+    #scoreBox {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        font-size: 26px;
+        background: rgba(255,255,255,0.7);
+        padding: 12px 22px;
+        border-radius: 10px;
+        font-weight:bold;
+    }
 
-  /* Shop */
-  .shopGrid{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:12px}
+    #pauseBtn, #homeBtn {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        padding: 12px 18px;
+        background: #333;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 20px;
+    }
+    #homeBtn { right: 100px; }
 
-  /* small */
-  .small{font-size:13px;color:rgba(255,255,255,0.8)}
-
-  /* gameOver */
-  .goHead{font-size:20px;margin-bottom:6px}
-
-  /* leaderboard */
-  .lb{max-height:160px;overflow:auto;text-align:left;padding:6px;border-radius:8px;background:rgba(0,0,0,0.18);margin-top:8px}
-
-  /* mobile responsive */
-  @media (max-width:420px){ #wrap{height:84vh} .card{padding:14px} .bigBtn{font-size:16px} }
+    #restartBtn {
+        display:none;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        padding: 16px 36px;
+        background: #ff5757;
+        color: white;
+        border: none;
+        font-size: 26px;
+        border-radius: 12px;
+        cursor: pointer;
+        box-shadow:0 4px 10px rgba(0,0,0,0.4);
+    }
 </style>
 </head>
 <body>
-<div id="app">
-  <div id="wrap">
-    <canvas id="bg" width="420" height="760"></canvas>
 
-    <!-- HUD -->
-    <div class="hud" aria-hidden>
-      <div class="chip" id="scoreChip">Skor: 0</div>
-      <div class="chip" id="levelChip">Seviye: 1</div>
-      <div class="chip" id="goldChip">Altın: 100</div>
-    </div>
-
-    <div class="controls" aria-hidden>
-      <button id="pauseBtn" class="btn">Dur</button>
-      <button id="shopBtn" class="btn">Mağaza</button>
-      <button id="settingsBtn" class="btn">Ayar</button>
-    </div>
-
-    <!-- touch -->
-    <div id="touchControls">
-      <div id="leftBtn" class="touchBtn">◀</div>
-      <div id="rightBtn" class="touchBtn">▶</div>
-    </div>
-
-    <!-- START overlay -->
-    <div id="start" class="overlay">
-      <div class="card">
-        <h2 style="margin:4px 0">Çizgiden Kaçış — Efsane</h2>
-        <p class="small">Dikey engellere çarpmadan devam et. Seviye atla, power-upları yakala, mağazadan skin al, günlük ödül kap!</p>
-        <div style="display:flex;gap:10px;justify-content:center;margin-top:12px">
-          <button id="startBtn" class="bigBtn">Başla</button>
-          <button id="tutorialBtn" class="mini">Nasıl Oynanır?</button>
-        </div>
-        <div class="small" style="margin-top:10px">Anında oyna — mobil & masaüstü destekli</div>
-      </div>
-    </div>
-
-    <!-- SHOP overlay -->
-    <div id="shop" class="overlay" style="display:none">
-      <div class="card">
-        <h3>Mağaza</h3>
-        <div class="small" style="margin-bottom:6px">Altın: <span id="shopGold">100</span></div>
-        <div id="shopGrid" class="shopGrid"></div>
-        <div style="margin-top:12px">
-          <button id="closeShop" class="mini">Kapat</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- SETTINGS overlay -->
-    <div id="settings" class="overlay" style="display:none">
-      <div class="card">
-        <h3>Ayarlar</h3>
-        <div style="margin-top:8px">
-          Ses: <input id="vol" type="range" min="0" max="1" step="0.05" value="0.6" style="width:60%">
-        </div>
-        <div style="margin-top:12px">
-          <button id="resetData" class="mini">Verileri Sıfırla</button>
-          <button id="closeSettings" class="mini">Kapat</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- GAME OVER -->
-    <div id="gameover" class="overlay" style="display:none">
-      <div class="card">
-        <div class="goHead">Oyun Bitti</div>
-        <div class="small">Skorun: <strong id="finalScore">0</strong></div>
-        <div style="display:flex;gap:8px;justify-content:center;margin-top:10px">
-          <button id="retryBtn" class="bigBtn">Tekrar Oyna</button>
-          <button id="menuBtn" class="mini">Ana Menü</button>
-        </div>
-        <div class="small" style="margin-top:10px">En İyi Skorlar</div>
-        <div id="leader" class="lb"></div>
-      </div>
-    </div>
-
-  </div>
+<div id="mainMenu">
+    <h1 style="font-size: 52px; text-shadow: 3px 3px #000;">Çizgiden Kaçış</h1>
+    <button class="menuBtn" onclick="startGame()">Başla</button>
 </div>
 
+<canvas id="gameCanvas"></canvas>
+<div id="scoreBox" style="display:none">Skor: 0<br>En Yüksek: 0</div>
+<button id="pauseBtn" style="display:none" onclick="pauseGame()">Dur</button>
+<button id="homeBtn" style="display:none" onclick="backToMenu()">🏠</button>
+<button id="restartBtn">Tekrar Oyna</button>
+
 <script>
-/* ================== FULL GAME — SINGLE FILE ==================
-   Features:
-   - Parallax animated background + particles
-   - Dikey engeller (only down)
-   - Power-ups: shield, slow, jetpack, magnet
-   - Seviye sistemi: every 150 score -> level++
-   - Shop with skins (emoji), coins
-   - Daily bonus (simple)
-   - Tasks (simple)
-   - Local leaderboard + best score
-   - Mobile (touch drag & buttons) + keyboard
-   - Sounds (WebAudio) and volume slider
-   - Pause / Restart / Menu
-   ============================================================ */
+let gameStarted = false;
+let paused = false;
+let gameOver = false;
 
-const bg = document.getElementById('bg'), ctx = bg.getContext('2d');
-const wrap = document.getElementById('wrap');
-bg.width = wrap.clientWidth; bg.height = wrap.clientHeight;
-let W = bg.width, H = bg.height;
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
 
-/* UI elems */
-const startOverlay = document.getElementById('start');
-const shopOverlay = document.getElementById('shop');
-const settingsOverlay = document.getElementById('settings');
-const gameoverOverlay = document.getElementById('gameover');
-
-const scoreChip = document.getElementById('scoreChip');
-const levelChip = document.getElementById('levelChip');
-const goldChip = document.getElementById('goldChip');
-const shopGold = document.getElementById('shopGold');
-const leaderEl = document.getElementById('leader');
-const finalScoreEl = document.getElementById('finalScore');
-
-/* Controls */
-const leftBtn = document.getElementById('leftBtn'), rightBtn = document.getElementById('rightBtn');
-const pauseBtn = document.getElementById('pauseBtn'), shopBtn = document.getElementById('shopBtn'), settingsBtn = document.getElementById('settingsBtn');
-
-/* Game state */
-let state = {
-  running:false,
-  paused:false,
-  score:0,
-  level:1,
-  best: Number(localStorage.getItem('best')||0),
-  gold: Number(localStorage.getItem('gold')||100),
-  leaderboard: JSON.parse(localStorage.getItem('lb')||'[]'),
-  spawnTimer:0, coinTimer:0,
-  obstacles:[], coins:[], powerups:[], particles:[],
-  skins:[
-    {name:'Maymun', emoji:'🐵', cost:0},
-    {name:'Kedi', emoji:'🐱', cost:120},
-    {name:'Tilki', emoji:'🦊', cost:200},
-    {name:'Panda', emoji:'🐼', cost:300},
-    {name:'Robot', emoji:'🤖', cost:500}
-  ],
-  owned: JSON.parse(localStorage.getItem('owned')||'[0]'),
-  selected: Number(localStorage.getItem('selected')||0),
-  power: {shield:0, slow:0, jet:0, magnet:0}
+let player = {
+    x: canvas.width * 0.1,
+    y: canvas.height / 2,
+    size: 60,
+    emoji: "🐵", // GÖRÜNÜR YAPILDI
+    speedY: 0
 };
 
-/* Player */
-let player = { x: W/2 - 28, y: H - 140, size:56, emoji: state.skins[state.selected].emoji, vy:0 };
+let obstacles = [];
+let score = 0;
+let highScore = Number(localStorage.getItem("highScore") || 0);
+let level = 1; = Number(localStorage.getItem("highScore") || 0);
 
-/* Audio (lightweight synth SFX) */
-let audioCtx=null, masterGain=null;
-function initAudio(){
-  if(audioCtx) return;
-  audioCtx = new (window.AudioContext||window.webkitAudioContext)();
-  masterGain = audioCtx.createGain(); masterGain.gain.value = Number(document.getElementById('vol').value||0.6); masterGain.connect(audioCtx.destination);
-}
-function sfx(freq, time=0.08, vol=0.06){
-  if(!audioCtx) return;
-  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
-  o.connect(g); g.connect(masterGain);
-  o.type='sine'; o.frequency.value=freq; g.gain.value=vol;
-  o.start(); g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + time);
-  setTimeout(()=>o.stop(), time*1000+30);
-}
+const gravity = 0.8;
 
-/* Helpers */
-function rand(a,b){return a + Math.random()*(b-a)}
-function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
-function rectIntersect(a,b){return !(b.x > a.x + a.w || b.x + b.w < a.x || b.y > a.y + a.h || b.y + b.h < a.y)}
+restartBtn.onclick = resetGame;
 
-/* Themes/Parallax background */
-let bgLayers = [];
-function spawnBgLayers(){
-  bgLayers = [];
-  for(let i=0;i<8;i++){
-    bgLayers.push({type: i%3===0 ? 'cloud' : 'mount', x: rand(-W*0.3, W), y: rand(10, H*0.6), vx: rand(0.1, 0.6), size: rand(30,120), alpha: rand(0.05, 0.22)});
-  }
-}
-spawnBgLayers();
+function startGame() {
+    mainMenu.style.display = "none";
+    scoreBox.style.display = "block";
+    pauseBtn.style.display = "block";
+    homeBtn.style.display = "block";
 
-/* SPAWN functions - only vertical/dikey obstacles */
-function spawnLine(){
-  const w = Math.floor(W * rand(0.06,0.12)); // thin vertical bar width
-  const h = Math.floor(rand(80, 180)); // height of vertical bar
-  const x = Math.random()*(W - w - 20) + 10;
-  const y = -h - 10;
-  const baseSpeed = 1.6 + state.level*0.12;
-  state.obstacles.push({x,y,w,h,speed: baseSpeed, type:'line'});
-}
-function spawnCoin(){
-  const size = 18;
-  const x = rand(20, W-20-size);
-  const y = -20;
-  const speed = rand(0.8,1.6);
-  state.coins.push({x,y,size,speed});
-}
-function spawnPower(){
-  const types = ['shield','slow','jet','magnet'];
-  const t = types[Math.floor(Math.random()*types.length)];
-  const x = rand(40, W-40);
-  const y = -22;
-  const speed = rand(0.8,1.3);
-  state.powerups.push({x,y,type:t,size:28,speed});
+    paused = false;
+    gameOver = false;
+    gameStarted = true;
+    score = 0;
+    obstacles = [];
+    player.y = canvas.height / 2;
+    player.speedY = 0;
+
+    loop();
 }
 
-/* SHOP rendering */
-const shopGrid = document.getElementById('shopGrid');
-function renderShop(){
-  shopGrid.innerHTML='';
-  shopGold.textContent = state.gold;
-  state.skins.forEach((s,i)=>{
-    const div = document.createElement('div'); div.className='shopItem';
-    div.style.width='96px'; div.style.background='rgba(255,255,255,0.03)'; div.style.padding='8px'; div.style.borderRadius='10px'; div.style.textAlign='center';
-    div.innerHTML = `<div style="font-size:28px">${s.emoji}</div><div class="small">${s.name}</div><div class="small">${s.cost} 🪙</div>`;
-    const btn = document.createElement('button'); btn.className='mini'; btn.style.marginTop='8px';
-    btn.textContent = state.owned.includes(i) ? (state.selected===i ? 'Seçili' : 'Seç') : 'Satın Al';
-    btn.onclick = ()=>{
-      if(state.owned.includes(i)){ state.selected=i; player.emoji=s.emoji; localStorage.setItem('selected', state.selected); renderShop(); sfx(800,0.06); }
-      else {
-        if(state.gold >= s.cost){ state.gold -= s.cost; state.owned.push(i); localStorage.setItem('gold', state.gold); localStorage.setItem('owned', JSON.stringify(state.owned)); shopGold.textContent = state.gold; goldChip.textContent = 'Altın: '+state.gold; renderShop(); sfx(1200,0.06);}
-        else alert('Altın yetmiyor');
-      }
-    };
-    div.appendChild(btn); shopGrid.appendChild(div);
-  });
+function pauseGame() {
+    paused = !paused;
+    pauseBtn.textContent = paused ? "Devam" : "Dur";
 }
 
-/* Leaderboard */
-function saveLeaderboard(score){
-  const lb = JSON.parse(localStorage.getItem('lb')||'[]');
-  lb.push({score:score, date: new Date().toLocaleString()});
-  lb.sort((a,b)=>b.score - a.score);
-  while(lb.length>10) lb.pop();
-  localStorage.setItem('lb', JSON.stringify(lb));
-  state.leaderboard = lb;
-}
-function renderLeaderboard(){
-  const lb = state.leaderboard;
-  if(!lb.length) leaderEl.innerHTML = '<div class="small">Henüz kayıt yok</div>';
-  else leaderEl.innerHTML = lb.map((r,i)=>`<div class="small">${i+1}. ${r.score} — ${r.date}</div>`).join('');
-}
-state.leaderboard = JSON.parse(localStorage.getItem('lb')||'[]');
-renderLeaderboard();
-
-/* Tasks & Daily bonus (simple) */
-function dailyBonus(){
-  const last = localStorage.getItem('dailyDate')||'';
-  const today = new Date().toDateString();
-  if(last !== today){
-    const bonus = 50;
-    state.gold += bonus; localStorage.setItem('gold', state.gold);
-    localStorage.setItem('dailyDate', today);
-    alert('Günlük ödül: '+bonus+' 🪙');
-  } else {
-    alert('Günlük ödül zaten alındı');
-  }
-}
-/* small tasks example */
-let tasks = [{text:'Toplam 500 puan al',done:false,cond:()=>state.best>=500, reward:120}];
-
-/* Input: touch drag & buttons & keyboard */
-let dragging=false, pointerId=null;
-bg.addEventListener('pointerdown', (e)=>{ initAudio(); dragging=true; pointerId=e.pointerId; bg.setPointerCapture(pointerId);});
-bg.addEventListener('pointerup', ()=>{ dragging=false; if(pointerId) try{bg.releasePointerCapture(pointerId)}catch(e){} });
-bg.addEventListener('pointercancel', ()=>{ dragging=false; });
-bg.addEventListener('pointermove', (e)=>{ if(!state.running || state.paused) return; if(dragging){ const r=bg.getBoundingClientRect(); const px = e.clientX - r.left; player.x = clamp(px - player.size/2, 6, W-player.size-6); }});
-
-leftBtn.addEventListener('pointerdown', ()=>{ leftHeld=true; initAudio(); }); leftBtn.addEventListener('pointerup', ()=>leftHeld=false);
-rightBtn.addEventListener('pointerdown', ()=>{ rightHeld=true; initAudio(); }); rightBtn.addEventListener('pointerup', ()=>rightHeld=false);
-let leftHeld=false, rightHeld=false;
-
-document.addEventListener('keydown', (e)=>{
-  if(e.key==='ArrowLeft') leftHeld=true;
-  if(e.key==='ArrowRight') rightHeld=true;
-});
-document.addEventListener('keyup', (e)=>{
-  if(e.key==='ArrowLeft') leftHeld=false;
-  if(e.key==='ArrowRight') rightHeld=false;
-});
-
-/* Pause / settings / shop controls */
-pauseBtn.addEventListener('click', ()=>{ state.paused = !state.paused; pauseBtn.textContent = state.paused ? 'Devam' : 'Dur'; if(state.paused) sfx(200,0.08); else sfx(900,0.04);});
-shopBtn.addEventListener('click', ()=>{ renderShop(); shopOverlay.style.display='flex'; });
-document.getElementById('closeShop').addEventListener('click', ()=>shopOverlay.style.display='none');
-settingsBtn.addEventListener('click', ()=>{ settingsOverlay.style.display='flex'; });
-document.getElementById('closeSettings').addEventListener('click', ()=>settingsOverlay.style.display='none');
-document.getElementById('resetData').addEventListener('click', ()=>{
-  if(confirm('Tüm verileri sıfırlamak istediğine emin misin?')){ localStorage.clear(); location.reload(); }
-});
-document.getElementById('startBtn').addEventListener('click', ()=>{ initAudio(); startGame(); });
-document.getElementById('retryBtn').addEventListener('click', ()=>{ gameoverOverlay.style.display='none'; startGame(); });
-document.getElementById('menuBtn').addEventListener('click', ()=>{ gameoverOverlay.style.display='none'; startOverlay.style.display='flex'; });
-
-/* Volume slider */
-document.getElementById('vol').addEventListener('input', (e)=>{ if(masterGain) masterGain.gain.value = Number(e.target.value); });
-
-/* Main game timers */
-let last=0;
-function startGame(){
-  startOverlay.style.display='none';
-  shopOverlay.style.display='none';
-  settingsOverlay.style.display='none';
-  gameoverOverlay.style.display='none';
-
-  state.running=true; state.paused=false; state.score=0; state.level=1; state.spawnTimer=0; state.coinTimer=0;
-  state.obstacles=[]; state.coins=[]; state.powerups=[]; state.particles=[];
-  player.x = W/2 - player.size/2; player.y = H-140; player.emoji = state.skins[state.selected].emoji;
-
-  last = performance.now();
-  requestAnimationFrame(loop);
+function backToMenu() {
+    paused = false;
+    gameStarted = false;
+    mainMenu.style.display = "block";
+    scoreBox.style.display = "none";
+    pauseBtn.style.display = "none";
+    homeBtn.style.display = "none";
 }
 
-/* Level & difficulty: every 150 score -> level++ */
-function checkLevel(){
-  const newLevel = Math.floor(state.score / 150) + 1;
-  if(newLevel !== state.level){ state.level = newLevel; levelChip.textContent = 'Seviye: '+state.level; // small fireworks
-    spawnParticles(player.x + player.size/2, player.y, '#ffd138', 18);
-    sfx(1200,0.18,0.08);
-  }
+function spawnObstacle() {
+    const animalFaces = ["🐶", "🐱", "🐭", "🐹", "🐰", "🐻", "🐼", "🐵", "🐸", "🐯"];
+    obstacles.push({
+        x: canvas.width,
+        y: Math.random() * (canvas.height - 80),
+        size: 60,
+        emoji: animalFaces[Math.floor(Math.random() * animalFaces.length)],
+        speed: 6 + score * 0.02
+    });
+}
+);
 }
 
-/* spawn scheduling */
-function schedule(dt){
-  state.spawnTimer += dt; state.coinTimer += dt;
-  const obsInterval = Math.max(420, 1200 - state.level*40);
-  const coinInterval = Math.max(900, 1700 - state.level*30);
-  if(state.spawnTimer > obsInterval){ state.spawnTimer = 0; spawnLine(); }
-  if(state.coinTimer > coinInterval){ state.coinTimer = 0; if(Math.random()<0.8) spawnCoin(); if(Math.random()<0.12) spawnPower(); }
+function resetGame() {
+    restartBtn.style.display = "none";
+    startGame();
 }
 
-/* particles */
-function spawnParticles(x,y,color,count=16){
-  for(let i=0;i<count;i++){
-    state.particles.push({x,y,vx:rand(-3,3),vy:rand(-6,0),life:40+rand(0,40),size:2+Math.random()*4,color});
-  }
+window.addEventListener("touchstart", jump);
+window.addEventListener("mousedown", jump);
+function jump() {
+    if (!gameStarted || paused || gameOver) return;
+    player.speedY = -14;
 }
 
-/* collision - direct overlap threshold */
-function directOverlap(a,b,threshold=0.25){
-  const ax=a.x, ay=a.y, aw=a.w||a.size, ah=a.h||a.size;
-  const bx=b.x, by=b.y, bw=b.w||b.size, bh=b.h||b.size;
-  const ox = Math.max(0, Math.min(ax+aw, bx+bw) - Math.max(ax,bx));
-  const oy = Math.max(0, Math.min(ay+ah, by+bh) - Math.max(ay,by));
-  const overlap = ox*oy; const minArea = Math.min(aw*ah, bw*bh);
-  return overlap >= threshold * minArea;
+function update() {
+    if (!gameStarted || paused || gameOver) return;
+
+    player.speedY += gravity;
+    player.y += player.speedY;
+
+    if (player.y < 0) player.y = 0;
+    if (player.y > canvas.height - player.size) player.y = canvas.height - player.size;
+
+    obstacles.forEach((o, i) => {
+        o.x -= o.speed;
+        if (o.x + o.w < 0) {
+            obstacles.splice(i, 1);
+            score++;
+            if (score > 0 && score % 150 === 0) level++;
+        }
+
+        if (player.x < o.x + o.w &&
+            player.x + player.size > o.x &&
+            player.y < o.y + o.h &&
+            player.y + player.size > o.y) {
+            endGame();
+        }
+    });
+
+    if (Math.random() < 0.03) spawnObstacle();
 }
 
-/* Game loop */
-function loop(ts){
-  if(!state.running) return;
-  requestAnimationFrame(loop);
-  const dt = Math.min(40, ts - last); last = ts;
-  if(state.paused) return;
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // move player by held buttons
-  if(leftHeld) player.x = clamp(player.x - 6 * (dt/16), 6, W - player.size - 6);
-  if(rightHeld) player.x = clamp(player.x + 6 * (dt/16), 6, W - player.size - 6);
+    ctx.font = player.size + "px serif";
+    ctx.fillText(player.emoji, player.x, player.y);
 
-  schedule(dt);
+    obstacles.forEach(o => {
+        ctx.font = o.size + "px serif";
+        ctx.fillText(o.emoji, o.x, o.y);
+    });
+(o => {
+        ctx.fillRect(o.x, o.y, o.w, o.h);
+    });
 
-  // update obstacles (only vertical fall)
-  for(let i=state.obstacles.length-1;i>=0;i--){
-    const o = state.obstacles[i];
-    const fallSpeed = o.speed + state.level*0.08;
-    o.y += fallSpeed * (dt/16);
+    scoreBox.innerHTML = "Skor: " + score + "<br>Seviye: " + level + "<br>En Yüksek: " + highScore; "Skor: " + score + "<br>En Yüksek: " + highScore;
+}
 
-    // remove if passed
-    if(o.y > H + 60){ state.obstacles.splice(i,1); state.score += 1; scoreChip.textContent = 'Skor: '+Math.floor(state.score); checkLevel(); continue; }
+function endGame() {
+    gameOver = true;
+    restartBtn.style.display = "block";
 
-    // collision (strict directOverlap)
-    const pRect = {x: player.x, y: player.y, w: player.size, h: player.size};
-    const oRect = {x: o.x, y: o.y, w: o.w, h: o.h};
-    if(directOverlap(pRect, oRect, 0.25)){
-      // if shield power active -> consume
-      if(state.power.shield && state.power.shield > 0){ state.power.shield = 0; sfx(120,0.2); spawnParticles(player.x+player.size/2, player.y+20, '#0ff', 20); state.obstacles.splice(i,1); continue; }
-      // otherwise game over
-      gameOver();
-      return;
+    if (score > highScore) {
+        highScore = score;
+        localStorage.setItem("highScore", highScore);
     }
-  }
-
-  // coins update & pickup (magnet effect)
-  for(let i=state.coins.length-1;i>=0;i--){
-    const c = state.coins[i];
-    c.y += c.speed * (dt/16);
-    if(state.power.magnet && state.power.magnet > 0){
-      // attract to player
-      const dx = (player.x + player.size/2) - (c.x);
-      const dy = (player.y + player.size/2) - (c.y);
-      c.x += dx * 0.06; c.y += dy * 0.06;
-    }
-    if(c.y > H + 40){ state.coins.splice(i,1); continue; }
-    const cr = {x:c.x-6,y:c.y-6,w:c.size+12,h:c.size+12};
-    const pr = {x:player.x,y:player.y,w:player.size,h:player.size};
-    if(rectIntersect(cr,pr)){ state.gold += 1; localStorage.setItem('gold', state.gold); goldChip.textContent = 'Altın: '+state.gold; shopGold.textContent = state.gold; sfx(1200,0.06); spawnParticles(player.x+player.size/2, player.y, '#ffd700', 10); state.coins.splice(i,1); }
-  }
-
-  // powerups update & pickup
-  for(let i=state.powerups.length-1;i>=0;i--){
-    const p = state.powerups[i];
-    p.y += p.speed * (dt/16);
-    if(p.y > H + 40){ state.powerups.splice(i,1); continue; }
-    const pr = {x:p.x,y:p.y,w:p.size,h:p.size}, pl={x:player.x,y:player.y,w:player.size,h:player.size};
-    if(rectIntersect(pr,pl)){
-      // apply power
-      if(p.type==='shield'){ state.power.shield = 1; sfx(800,0.12); spawnParticles(player.x+player.size/2, player.y, '#0ff', 18); }
-      if(p.type==='slow'){ state.power.slow = 4000; sfx(660,0.12); spawnParticles(player.x+player.size/2, player.y, '#8cf', 12); }
-      if(p.type==='jet'){ state.power.jet = 4000; sfx(1200,0.12); spawnParticles(player.x+player.size/2, player.y+20, '#f80', 20); }
-      if(p.type==='magnet'){ state.power.magnet = 5000; sfx(1000,0.12); spawnParticles(player.x+player.size/2, player.y, '#ffd700', 14); }
-      state.powerups.splice(i,1);
-    }
-  }
-
-  // particles update
-  for(let i=state.particles.length-1;i>=0;i--){ const pa=state.particles[i]; pa.x += pa.vx*(dt/16); pa.y += pa.vy*(dt/16); pa.vy += 0.12; pa.life -= (dt/16); if(pa.life<=0) state.particles.splice(i,1); }
-
-  // decrease timed powerups
-  ['slow','jet','magnet'].forEach(k=>{
-    if(state.power[k] && state.power[k] > 0){
-      state.power[k] -= dt;
-      if(state.power[k] <= 0) state.power[k]=0;
-    }
-  });
-
-  // jet behaviour: if jet active, float upward a bit
-  if(state.power.jet && state.power.jet > 0){
-    player.y = clamp(player.y - 1.6 * (dt/16), 40, H - 120);
-  } else {
-    // gravity effect when not jet
-    player.y = clamp(player.y + 0.8 * (dt/16) * 18, 40, H - 120); // small float down
-  }
-
-  // auto-move: slight smoothing to desired x when drag not active and not held
-  // draw everything
-  drawScene();
 }
 
-/* Draw scene: parallax background + obstacles + player + UI */
-function drawScene(){
-  // background gradient
-  const t = Date.now()*0.0004;
-  const g = ctx.createLinearGradient(0,0,W,H);
-  g.addColorStop(0, '#07102a'); g.addColorStop(1, '#0b2a44');
-  ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
-
-  // parallax layers
-  bgLayers.forEach((e,idx)=>{
-    e.x -= e.vx;
-    if(e.x < -200) e.x = W + rand(0,200);
-    ctx.save(); ctx.globalAlpha = e.alpha;
-    if(e.type==='cloud'){ ctx.fillStyle='rgba(255,255,255,0.9)'; ctx.beginPath(); ctx.ellipse(e.x,e.y,e.size*1.2,e.size*0.6,0,0,Math.PI*2); ctx.fill(); }
-    else { ctx.fillStyle='rgba(100,160,200,0.12)'; ctx.beginPath(); ctx.moveTo(e.x,e.y+e.size*0.8); ctx.lineTo(e.x+e.size*0.5,e.y); ctx.lineTo(e.x+e.size,e.y+e.size*0.8); ctx.closePath(); ctx.fill(); }
-    ctx.restore();
-  });
-
-  // moving road lines (vertical strips)
-  for(let i=0;i<14;i++){
-    ctx.fillStyle = 'rgba(255,255,255,'+(0.02 + Math.sin(t*(i+1))*0.01)+')';
-    ctx.fillRect((i*38 + (t*60)) % (W+60) - 30, H*0.62, 3, H*0.38);
-  }
-
-  // coins
-  state.coins.forEach(c=>{ ctx.font = `${c.size}px "Segoe UI Emoji"`; ctx.textBaseline='middle'; ctx.fillText('🪙', c.x, c.y + c.size*0.35); });
-
-  // powerups indicator drawn as small circles falling
-  state.powerups.forEach(p=>{
-    ctx.beginPath(); ctx.fillStyle = p.type==='shield'?'#0ff': p.type==='slow'?'#8cf': p.type==='jet'?'#f80':'#ffd700';
-    ctx.arc(p.x, p.y, p.size/2, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle='#000'; ctx.font='12px sans-serif'; ctx.fillText(p.type[0].toUpperCase(), p.x-6, p.y+4);
-  });
-
-  // obstacles (vertical bars)
-  state.obstacles.forEach(o=>{
-    const grad = ctx.createLinearGradient(o.x, o.y, o.x+o.w, o.y);
-    grad.addColorStop(0,'rgba(255,80,60,0.95)'); grad.addColorStop(1,'rgba(220,20,20,0.6)');
-    ctx.fillStyle=grad; ctx.fillRect(o.x, o.y, o.w, o.h);
-    ctx.fillStyle='rgba(255,255,255,0.04)'; ctx.fillRect(o.x, o.y, o.w, Math.max(1, Math.floor(o.h/6)));
-  });
-
-  // player
-  ctx.font = `${player.size}px "Segoe UI Emoji", "Noto Color Emoji"`;
-  ctx.textBaseline='middle'; ctx.fillText(player.emoji, player.x, player.y + player.size*0.32);
-
-  // particles
-  state.particles.forEach(p=>{ ctx.globalAlpha = Math.max(0, p.life/80); ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,Math.PI*2); ctx.fill(); ctx.globalAlpha = 1; });
-
-  // HUD (DOM updated for speed)
-  document.getElementById('scoreChip').textContent = 'Skor: '+Math.floor(state.score);
-  document.getElementById('levelChip').textContent = 'Seviye: '+state.level;
-  document.getElementById('goldChip').textContent = 'Altın: '+state.gold;
+function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
 }
-
-/* Game over */
-function gameOver(){
-  state.running = false;
-  // save best & leaderboard
-  if(Math.floor(state.score) > state.best){ state.best = Math.floor(state.score); localStorage.setItem('best', state.best); }
-  saveLeaderboard(Math.floor(state.score));
-  renderLeaderboard();
-  finalScoreEl.textContent = Math.floor(state.score);
-  gameoverOverlay.style.display='flex';
-  sfx(120,0.5,0.15);
-}
-
-/* initial preview spawns */
-for(let i=0;i<3;i++) spawnLine();
-for(let i=0;i<2;i++) spawnCoin();
-for(let i=0;i<1;i++) spawnPower();
-drawScene();
-
-/* helpers: responsive resizing */
-window.addEventListener('resize', ()=>{
-  bg.width = wrap.clientWidth; bg.height = wrap.clientHeight;
-  W = bg.width; H = bg.height;
-  player.x = clamp(player.x, 6, W - player.size - 6);
-  player.y = clamp(player.y, 40, H - 120);
-  spawnBgLayers();
-});
-
-/* Save gold on unload */
-window.addEventListener('beforeunload', ()=>{ localStorage.setItem('gold', state.gold); localStorage.setItem('selected', state.selected); localStorage.setItem('owned', JSON.stringify(state.owned)); });
-
-/* expose quick debug */
-window._game = {state, player, startGame:()=>document.getElementById('startBtn').click()};
-
 </script>
 </body>
 </html>
