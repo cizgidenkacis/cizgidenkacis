@@ -1,225 +1,267 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="tr">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Çizgiden Kaçış — Çalışan Sürüm</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Çizgiden Kaçış</title>
 <style>
-  html,body{height:100%;margin:0;font-family:Arial,Helvetica,sans-serif;user-select:none;background:#fff;
-    background-image: repeating-linear-gradient(45deg,#eee 0,#eee 10px,#fff 10px,#fff 20px);}
-  #mainMenu{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:5}
-  #mainMenu h1{font-size:48px;color:#000;margin:0 0 18px 0}
-  .menuBtn{padding:14px 34px;font-size:20px;border-radius:12px;border:0;background:#000;color:#fff;cursor:pointer}
-  canvas{position:fixed;inset:0;display:block}
-  #scoreBox{position:fixed;left:14px;top:14px;background:rgba(0,0,0,0.7);color:#fff;padding:10px 14px;border-radius:10px;font-weight:700;display:none;z-index:4}
-  #pauseBtn,#homeBtn,#restartBtn{position:fixed;top:14px;right:14px;padding:8px 12px;border-radius:8px;border:0;background:#222;color:#fff;cursor:pointer;display:none;z-index:4}
-  #homeBtn{right:110px}
-  #restartBtn{display:none;left:50%;top:50%;transform:translate(-50%,-50%);font-size:20px;padding:12px 20px;background:#e74c3c}
+    body {
+        margin: 0;
+        overflow: hidden;
+        background: white;
+        font-family: Arial, sans-serif;
+        user-select: none;
+    }
+
+    /* Giriş ekranı */
+    #mainMenu {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        color: black;
+    }
+
+    .menuBtn {
+        padding: 18px 40px;
+        background: black;
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-size: 30px;
+        margin-top: 20px;
+        cursor: pointer;
+    }
+
+    /* Oyun UI */
+    #scoreBox {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        font-size: 26px;
+        background: rgba(0,0,0,0.1);
+        padding: 12px 22px;
+        border-radius: 10px;
+        font-weight:bold;
+        color:black;
+        display:none;
+    }
+
+    #pauseBtn, #homeBtn {
+        position: absolute;
+        top: 20px;
+        padding: 12px 20px;
+        background: black;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 20px;
+        display:none;
+    }
+
+    #pauseBtn { right: 20px; }
+    #homeBtn { right: 120px; }
+
+    /* Game Over */
+    #gameOverMenu {
+        display:none;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align:center;
+    }
+
+    .gameOverBtn {
+        padding: 15px 35px;
+        background: black;
+        color: white;
+        border: none;
+        border-radius: 10px;
+        margin: 10px;
+        font-size: 26px;
+        cursor:pointer;
+    }
+
+    /* Kanvas */
+    #gameCanvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+    }
+
 </style>
 </head>
 <body>
 
+<!-- GİRİŞ MENÜSÜ -->
 <div id="mainMenu">
-  <h1>Çizgiden Kaçış</h1>
-  <button id="startBtn" class="menuBtn">Başla</button>
+    <h1 style="font-size:55px; font-weight:bold">ÇİZGİDEN KAÇIŞ</h1>
+    <button class="menuBtn" onclick="startGame()">BAŞLA</button>
 </div>
 
+<!-- KANVAS -->
 <canvas id="gameCanvas"></canvas>
 
-<div id="scoreBox">Skor: 0<br>Seviye: 1</div>
-<button id="pauseBtn">Dur</button>
-<button id="homeBtn">Ana Menü</button>
-<button id="restartBtn">Tekrar Oyna</button>
+<!-- SKOR -->
+<div id="scoreBox">Skor: 0<br>En Yüksek: 0</div>
+<button id="pauseBtn" onclick="pauseGame()">Dur</button>
+<button id="homeBtn" onclick="backToMenu()">🏠</button>
+
+<!-- OYUN BİTTİ MENÜ -->
+<div id="gameOverMenu">
+    <h1 style="font-size:45px; color:black;">Oyun Bitti</h1>
+    <button class="gameOverBtn" onclick="resetGame()">Tekrar Oyna</button><br>
+    <button class="gameOverBtn" onclick="backToMenu()">Ana Menü</button>
+</div>
 
 <script>
-/* ====== Basit, sağlam ve çalışan oyun kodu ====== */
-
-/* Elemanlar */
-const startBtn = document.getElementById('startBtn');
-const mainMenu = document.getElementById('mainMenu');
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-const scoreBox = document.getElementById('scoreBox');
-const pauseBtn = document.getElementById('pauseBtn');
-const homeBtn = document.getElementById('homeBtn');
-const restartBtn = document.getElementById('restartBtn');
-
-/* Canvas boyutlandırma */
-function resizeCanvas(){
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-}
-window.addEventListener('resize', resizeCanvas);
-resizeCanvas();
-
-/* Oyun durumu */
 let running = false;
 let paused = false;
 let gameOver = false;
-let score = 0;
-let level = 1;
-let highScore = Number(localStorage.getItem('highScore')||0);
-let obstacles = [];
-let lastTime = 0;
-let spawnAccumulator = 0;
 
-/* Player (sadece dikey hareket - sürükleyerek) */
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+/* Karakter ayarları */
 const player = {
-  x: 80,
-  y: canvas.height/2,
-  size: 64,
-  emoji: '🐵'
+    x: canvas.width/2,
+    y: canvas.height - 120,
+    size: 80,
+    emoji: "🐵"
 };
 
-/* Kontrol: mouse/touch drag ile dikey konum */
-let dragging = false;
-canvas.addEventListener('pointerdown', (e)=>{ dragging = true; canvas.setPointerCapture(e.pointerId); handlePointerMove(e); });
-canvas.addEventListener('pointerup', (e)=>{ dragging = false; try{canvas.releasePointerCapture(e.pointerId);}catch(e){} });
-canvas.addEventListener('pointermove', (e)=>{ if(dragging && running && !paused && !gameOver) handlePointerMove(e); });
-function handlePointerMove(e){
-  const rect = canvas.getBoundingClientRect();
-  const y = e.clientY - rect.top;
-  player.y = Math.max(0, Math.min(canvas.height - player.size, y - player.size/2));
-}
-
-/* Buton olayları */
-startBtn.addEventListener('click', ()=>{ startGame(); });
-pauseBtn.addEventListener('click', ()=>{ paused = !paused; pauseBtn.textContent = paused ? 'Devam' : 'Dur'; });
-homeBtn.addEventListener('click', ()=>{ backToMenu(); });
-restartBtn.addEventListener('click', ()=>{ restartBtn.style.display='none'; startGame(); });
-
-/* Engel üretimi (yukarıdan, yatay genişlik sabit, tüm hız eşit) */
-function spawnObstacle(){
-  const w = Math.min(220, Math.max(120, Math.floor(canvas.width * 0.18))); // sabit genişlik aralığı
-  const x = Math.random()*(canvas.width - w - 20) + 10; // yatay konum rastgele
-  const y = -18; // yukarıdan başla
-  const h = 14;  // engel yüksekliği (çizgi hissi)
-  const speed = 5; // tüm engeller eşit hız
-  obstacles.push({x,y,w,h,speed});
-}
-
-/* Güncelleme */
-function update(dt){
-  if(!running || paused || gameOver) return;
-
-  spawnAccumulator += dt;
-  // spawn her ~0.9s
-  if(spawnAccumulator > 900){
-    spawnAccumulator = 0;
-    spawnObstacle();
-  }
-
-  // engelleri hareket ettir
-  for(let i = obstacles.length -1; i>=0; i--){
-    let o = obstacles[i];
-    o.y += o.speed * (dt/16);
-    if(o.y > canvas.height + 40){
-      obstacles.splice(i,1);
-      score++;
-      level = Math.floor(score/150) + 1; // her 150'de level artar
-    } else {
-      // çarpışma kontrolü
-      const pr = {x:player.x, y:player.y, w:player.size, h:player.size};
-      const or = {x:o.x, y:o.y, w:o.w, h:o.h};
-      if(rectIntersect(pr,or)){
-        doGameOver();
-        return;
-      }
-    }
-  }
-}
-
-/* Çarpışma kutusu fonksiyonu */
-function rectIntersect(a,b){
-  return !(b.x > a.x + a.w || b.x + b.w < a.x || b.y > a.y + a.h || b.y + b.h < a.y);
-}
-
-/* Çizim */
-function draw(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-
-  // arka plan (hafif gradient)
-  const g = ctx.createLinearGradient(0,0,0,canvas.height);
-  g.addColorStop(0, '#4e54c8'); g.addColorStop(1, '#8f94fb');
-  ctx.fillStyle = g; ctx.fillRect(0,0,canvas.width,canvas.height);
-
-  // engeller
-  ctx.fillStyle = '#000';
-  obstacles.forEach(o => ctx.fillRect(o.x, o.y, o.w, o.h));
-
-  // player (emoji)
-  ctx.font = player.size + 'px "Segoe UI Emoji", "Noto Color Emoji", serif';
-  ctx.textBaseline = 'top';
-  ctx.fillText(player.emoji, player.x, player.y);
-
-  // UI: scoreBox güncelleniyor via DOM below
-}
-
-/* Oyun döngüsü */
-function loop(timestamp){
-  if(!lastTime) lastTime = timestamp;
-  const dt = timestamp - lastTime;
-  lastTime = timestamp;
-
-  update(dt);
-  draw();
-  // DOM güncellemesi
-  scoreBox.style.display = running ? 'block':'none';
-  if(running){
-    scoreBox.innerHTML = `Skor: ${score}<br>En Yüksek: ${highScore}<br>Seviye: ${level}`;
-    pauseBtn.style.display = paused? 'block' : 'block';
-    homeBtn.style.display = 'block';
-  }
-
-  if(running) requestAnimationFrame(loop);
-}
+let obstacles = [];
+let score = 0;
+let highScore = Number(localStorage.getItem("highScore") || 0);
 
 /* Başlat */
 function startGame(){
-  // reset
-  running = true;
-  paused = false;
-  gameOver = false;
-  score = 0;
-  level = 1;
-  obstacles = [];
-  player.y = canvas.height/2;
-  lastTime = 0;
-  spawnAccumulator = 0;
+    mainMenu.style.display = "none";
+    gameOverMenu.style.display = "none";
+    scoreBox.style.display = "block";
+    pauseBtn.style.display = "block";
+    homeBtn.style.display = "block";
 
-  // gizle menü
-  mainMenu.style.display = 'none';
-  restartBtn.style.display = 'none';
-  scoreBox.style.display = 'block';
-  pauseBtn.style.display = 'block';
-  homeBtn.style.display = 'block';
+    running = true;
+    paused = false;
+    gameOver = false;
 
-  // başlat döngü
-  requestAnimationFrame(loop);
+    score = 0;
+    obstacles = [];
+
+    loop();
 }
 
-/* Menüye dön */
+function pauseGame(){
+    paused = !paused;
+    pauseBtn.textContent = paused ? "Devam" : "Dur";
+}
+
 function backToMenu(){
-  running = false;
-  paused = false;
-  gameOver = false;
-  obstacles = [];
-  mainMenu.style.display = 'flex';
-  scoreBox.style.display = 'none';
-  pauseBtn.style.display = 'none';
-  homeBtn.style.display = 'none';
-  restartBtn.style.display = 'none';
+    running = false;
+    paused = false;
+    gameOver = false;
+
+    mainMenu.style.display = "block";
+    scoreBox.style.display = "none";
+    pauseBtn.style.display = "none";
+    homeBtn.style.display = "none";
+    gameOverMenu.style.display = "none";
 }
 
-/* Game over */
-function doGameOver(){
-  gameOver = true;
-  running = false;
-  restartBtn.style.display = 'block';
-  if(score > highScore){ highScore = score; localStorage.setItem('highScore', highScore); }
+function resetGame(){ startGame(); }
+
+/* Engel üret */
+function spawnObstacle(){
+    obstacles.push({
+        x: Math.random() * (canvas.width - 150),
+        y: -20,
+        w: 150,
+        h: 10,
+        speed: 6
+    });
 }
 
-/* Restart butonu already shows and calls startGame() */
+/* Kontrol (SAĞA-SOLA sürükleme) */
+let dragging = false;
+canvas.addEventListener("pointerdown", e=>{ dragging = true; move(e); });
+canvas.addEventListener("pointerup", ()=> dragging = false);
+canvas.addEventListener("pointermove", e=>{ if(dragging) move(e); });
+
+function move(e){
+    if(!running || paused || gameOver) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    player.x = Math.max(0, Math.min(canvas.width - player.size, x - player.size/2));
+}
+
+/* Çiz */
+function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    // Çizgisel arka plan
+    ctx.fillStyle = "rgba(0,0,0,0.05)";
+    for(let i=0;i<canvas.height;i+=40){
+        ctx.fillRect(0,i,canvas.width,2);
+    }
+
+    ctx.font = player.size + "px serif";
+    ctx.fillText(player.emoji, player.x, player.y);
+
+    ctx.fillStyle = "black";
+    obstacles.forEach(o=>{ ctx.fillRect(o.x, o.y, o.w, o.h); });
+
+    scoreBox.innerHTML = `Skor: ${score}<br>En Yüksek: ${highScore}`;
+}
+
+/* Güncelle */
+function update(){
+    if(!running || paused || gameOver) return;
+
+    if(Math.random() < 0.03) spawnObstacle();
+
+    obstacles.forEach((o,i)=>{
+        o.y += o.speed;
+
+        if(o.y > canvas.height){
+            obstacles.splice(i,1);
+            score++;
+        }
+
+        // Çarpışma kontrol
+        if(
+            player.x < o.x + o.w &&
+            player.x + player.size > o.x &&
+            player.y < o.y + o.h &&
+            player.y + player.size > o.y
+        ){
+            endGame();
+        }
+    });
+}
+
+function endGame(){
+    gameOver = true;
+    running = false;
+
+    if(score > highScore){
+        highScore = score;
+        localStorage.setItem("highScore", highScore);
+    }
+
+    gameOverMenu.style.display = "block";
+}
+
+function loop(){
+    update();
+    draw();
+    if(running) requestAnimationFrame(loop);
+}
 
 </script>
 </body>
