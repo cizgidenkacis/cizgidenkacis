@@ -14,7 +14,6 @@
         font-family: Arial, sans-serif;
     }
 
-    /* --- GİRİŞ MENÜSÜ --- */
     #mainMenu {
         position: absolute;
         top: 50%;
@@ -23,7 +22,6 @@
         text-align: center;
         color: black;
     }
-
     .menuBtn {
         padding: 18px 40px;
         font-size: 30px;
@@ -34,7 +32,6 @@
         cursor: pointer;
     }
 
-    /* --- MOBİL BUTONLAR --- */
     #mobile-controls {
         position: fixed;
         bottom: 25px;
@@ -43,9 +40,7 @@
         justify-content: center;
         gap: 60px;
         z-index: 2000;
-        pointer-events: auto;
     }
-
     #mobile-controls button {
         width: 95px;
         height: 95px;
@@ -57,7 +52,6 @@
         backdrop-filter: blur(5px);
     }
 
-    /* --- SKOR KUTUSU --- */
     #scoreBox {
         position: absolute;
         top: 15px;
@@ -70,7 +64,6 @@
         display: none;
     }
 
-    /* --- TEKRAR BUTONU --- */
     #restartBtn {
         display:none;
         position: absolute;
@@ -89,29 +82,22 @@
 </head>
 <body>
 
-<!-- GİRİŞ MENÜSÜ -->
 <div id="mainMenu">
     <h1 style="font-size:55px;">Çizgiden Kaçış</h1>
     <button class="menuBtn" onclick="startGame()">Başla</button>
 </div>
 
-<!-- OYUN CANVASI -->
 <canvas id="gameCanvas"></canvas>
-
-<!-- SKOR -->
 <div id="scoreBox">Skor: 0<br>En Yüksek: 0</div>
 
-<!-- MOBİL KONTROL BUTONLARI -->
 <div id="mobile-controls" style="display:none;">
     <button id="leftBtn">◀</button>
     <button id="rightBtn">▶</button>
 </div>
 
-<!-- TEKRAR OYNA -->
 <button id="restartBtn" onclick="resetGame()">Tekrar Oyna</button>
 
 <script>
-/* --- TEMEL DEĞİŞKENLER --- */
 let gameRunning = false;
 let gameOver = false;
 
@@ -134,16 +120,19 @@ let highScore = Number(localStorage.getItem("highScore") || 0);
 
 let moveLeft = false;
 let moveRight = false;
-let speed = 7;
+
+let baseMoveSpeed = 9;    // bilgisayar + mobil eşit hız
+let obstacleBaseSpeed = 7;
+
+let lastTime = 0;
 
 /* --- MOBİL KONTROLLER --- */
-document.getElementById("leftBtn").addEventListener("touchstart", () => moveLeft = true);
-document.getElementById("leftBtn").addEventListener("touchend", () => moveLeft = false);
+leftBtn.addEventListener("touchstart", () => moveLeft = true);
+leftBtn.addEventListener("touchend", () => moveLeft = false);
+rightBtn.addEventListener("touchstart", () => moveRight = true);
+rightBtn.addEventListener("touchend", () => moveRight = false);
 
-document.getElementById("rightBtn").addEventListener("touchstart", () => moveRight = true);
-document.getElementById("rightBtn").addEventListener("touchend", () => moveRight = false);
-
-/* --- KLAVYE KONTROLÜ --- */
+/* --- KLAVYE --- */
 document.addEventListener("keydown", (e) => {
     if (e.key === "ArrowLeft") moveLeft = true;
     if (e.key === "ArrowRight") moveRight = true;
@@ -153,49 +142,58 @@ document.addEventListener("keyup", (e) => {
     if (e.key === "ArrowRight") moveRight = false;
 });
 
-/* --- OYUN BAŞLAT --- */
+/* --- OYUN BAŞLATMA --- */
 function startGame() {
     mainMenu.style.display = "none";
+    restartBtn.style.display = "none";
     scoreBox.style.display = "block";
-    document.getElementById("mobile-controls").style.display = "flex";
+    mobile-controls.style.display = "flex";
 
     gameRunning = true;
     gameOver = false;
+
     score = 0;
     obstacles = [];
 
-    loop();
+    player.x = canvas.width / 2;
+
+    requestAnimationFrame(gameLoop);
 }
 
-/* --- OBSTACLE OLUŞTURMA --- */
+/* --- ENGEL OLUŞTURMA --- */
 function spawnObstacle() {
     obstacles.push({
         x: Math.random() * (canvas.width - 120),
         y: -20,
         w: 120,
-        h: 10,
-        speed: 6
+        h: 12,
+        speed: obstacleBaseSpeed
     });
 }
 
-/* --- OYUN RESET --- */
-function resetGame() {
-    restartBtn.style.display = "none";
-    startGame();
+/* --- GAME LOOP (FPS BAĞIMSIZ) --- */
+function gameLoop(timestamp) {
+    let delta = (timestamp - lastTime) / 16.67;
+    lastTime = timestamp;
+
+    update(delta);
+    draw();
+
+    if (gameRunning) requestAnimationFrame(gameLoop);
 }
 
 /* --- UPDATE --- */
-function update() {
+function update(delta) {
     if (!gameRunning || gameOver) return;
 
-    if (moveLeft) player.x -= speed;
-    if (moveRight) player.x += speed;
+    if (moveLeft) player.x -= baseMoveSpeed * delta;
+    if (moveRight) player.x += baseMoveSpeed * delta;
 
     if (player.x < 0) player.x = 0;
     if (player.x > canvas.width - player.size) player.x = canvas.width - player.size;
 
     obstacles.forEach((o, i) => {
-        o.y += o.speed;
+        o.y += o.speed * delta;
 
         if (o.y > canvas.height) {
             obstacles.splice(i, 1);
@@ -208,7 +206,7 @@ function update() {
             player.y < o.y + o.h &&
             player.y + player.size > o.y
         ) {
-            endGame();
+            return endGame();
         }
     });
 
@@ -223,17 +221,16 @@ function draw() {
     ctx.fillText(player.emoji, player.x, player.y);
 
     ctx.fillStyle = "#ff2b2b";
-    obstacles.forEach(o => {
-        ctx.fillRect(o.x, o.y, o.w, o.h);
-    });
+    obstacles.forEach(o => ctx.fillRect(o.x, o.y, o.w, o.h));
 
     scoreBox.innerHTML = "Skor: " + score + "<br>En Yüksek: " + highScore;
 }
 
-/* --- OYUN BİTİŞİ --- */
+/* --- OYUN BİTİŞ --- */
 function endGame() {
-    gameOver = true;
     gameRunning = false;
+    gameOver = true;
+
     restartBtn.style.display = "block";
 
     if (score > highScore) {
@@ -242,11 +239,9 @@ function endGame() {
     }
 }
 
-/* --- ANA OYUN LOOPU --- */
-function loop() {
-    update();
-    draw();
-    if (gameRunning) requestAnimationFrame(loop);
+/* --- RESET --- */
+function resetGame() {
+    startGame();
 }
 </script>
 
