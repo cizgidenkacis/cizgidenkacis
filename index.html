@@ -1,475 +1,322 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="tr">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Çizgiden Kaçış — Gelişmiş</title>
-<style>
-  :root{
-    --ui-bg: rgba(0,0,0,0.6);
-    --accent: #ffd700;
-  }
-  html,body{height:100%;margin:0;font-family:Inter,Arial,Helvetica,sans-serif;background:#000;color:#fff;overflow:hidden}
-  #wrap{position:relative;width:100%;height:100%}
-  canvas{position:absolute;inset:0;display:block}
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Çizgiden Kaçış</title>
 
-  /* Overlays */
-  .overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:30}
-  .panel{background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));padding:18px;border-radius:12px;min-width:320px;text-align:center;border:1px solid rgba(255,255,255,0.06)}
-  button{cursor:pointer}
-  .big{padding:12px 22px;border-radius:10px;border:0;background:var(--accent);color:#111;font-weight:800;margin:8px;font-size:18px}
-  .muted{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.04);padding:8px;border-radius:8px;color:#fff;margin:6px}
-  .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
-  #hud{position:absolute;left:12px;top:12px;z-index:40;display:flex;gap:12px;align-items:center;font-weight:700}
-  .chip{background:var(--ui-bg);padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,0.04)}
-  #mobile-controls{position:absolute;bottom:20px;width:100%;display:flex;justify-content:space-between;padding:0 30px;z-index:50;pointer-events:auto}
-  .mbtn{width:86px;height:86px;border-radius:18px;border:0;background:rgba(255,255,255,0.06);font-size:40px;color:#fff}
-  #pauseBtn{position:absolute;right:18px;top:18px;z-index:40;padding:8px 12px;border-radius:8px;border:0;background:var(--ui-bg)}
-  #lives{display:flex;gap:6px;align-items:center}
-  .heart{font-size:20px;color:#ff6b6b}
-  /* small icons */
-  .small{padding:8px 12px;border-radius:8px;border:0;background:rgba(255,255,255,0.04);margin:4px}
-  /* responsive */
-  @media (max-width:420px){ .panel{min-width:260px} .mbtn{width:72px;height:72px;font-size:34px} }
+<style>
+    body {
+        margin: 0;
+        overflow: hidden;
+        background: #000;
+        font-family: Arial, sans-serif;
+        user-select: none; /* kopyalamayı tamamen kapatır */
+        -webkit-user-select: none;
+    }
+
+    /* --- GİRİŞ MENÜSÜ --- */
+    #mainMenu {
+        position: absolute;
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        color: white;
+    }
+    .menuBtn {
+        padding: 20px 45px;
+        font-size: 32px;
+        background: white;
+        color: black;
+        border-radius: 15px;
+        border: none;
+        cursor: pointer;
+    }
+
+    /* --- MOBİL KONTROLLER --- */
+    #mobile-controls {
+        position: fixed;
+        bottom: 25px;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        gap: 70px;
+        z-index: 3000;
+    }
+    #mobile-controls button {
+        width: 90px;
+        height: 90px;
+        font-size: 40px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.35);
+        color: white;
+        border: none;
+        backdrop-filter: blur(7px);
+    }
+
+    /* --- SKOR --- */
+    #scoreBox {
+        position: absolute;
+        top: 15px; left: 15px;
+        padding: 14px 25px;
+        background: rgba(255,255,255,0.15);
+        color: white;
+        font-size: 24px;
+        border-radius: 10px;
+        display: none;
+    }
+
+    /* --- RESTART --- */
+    #restartBtn {
+        display:none;
+        position:absolute;
+        top:50%; left:50%;
+        transform:translate(-50%,-50%);
+        padding:18px 40px;
+        background:#ff5252;
+        color:white;
+        border:none;
+        border-radius:14px;
+        font-size:28px;
+        cursor:pointer;
+    }
+
+    /* --- AYARLAR BUTONU (mobil) --- */
+    #settingsBtn {
+        position: absolute;
+        top: 20px; right: 20px;
+        padding: 15px 25px;
+        font-size: 22px;
+        border-radius: 8px;
+        background: rgba(255,255,255,0.3);
+        color:white;
+        border:none;
+        display:none;
+    }
+
+    /* --- AYARLAR MENÜSÜ --- */
+    #settingsMenu {
+        position: absolute;
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0,0,0,0.85);
+        padding: 30px;
+        border-radius: 15px;
+        text-align: center;
+        display: none;
+        color: white;
+        width: 80%;
+        max-width: 350px;
+    }
+    #settingsMenu button {
+        margin-top: 12px;
+        width: 100%;
+        padding: 16px;
+        font-size: 20px;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+    }
 </style>
 </head>
 <body>
-<div id="wrap">
-  <canvas id="bg"></canvas>
 
-  <!-- HUD -->
-  <div id="hud" aria-hidden>
-    <div class="chip">Skor: <span id="scoreShow">0</span></div>
-    <div class="chip">Seviye: <span id="levelShow">1</span></div>
-    <div class="chip" id="lives">Canlar: <span id="hearts"></span></div>
-  </div>
-
-  <button id="pauseBtn" style="display:none">Dur</button>
-
-  <!-- Mobile controls -->
-  <div id="mobile-controls" style="display:none">
-    <button class="mbtn" id="leftBtn">◀</button>
-    <button class="mbtn" id="rightBtn">▶</button>
-  </div>
-
-  <!-- MAIN MENU -->
-  <div id="mainMenu" class="overlay" style="z-index:60">
-    <div class="panel">
-      <h1 style="margin:4px 0 6px 0">Çizgiden Kaçış</h1>
-      <p style="color:rgba(255,255,255,0.75)">Altın toplama, skin seçme yerine skor yarış — ama canların sınırlı.</p>
-
-      <div class="row" style="margin:10px 0">
-        <button class="big" id="startBtn">Başla</button>
-        <button class="muted" id="skinBtn">Skin</button>
-        <button class="muted" id="modeBtn">Mod</button>
-      </div>
-
-      <div class="row" style="margin-top:8px">
-        <button class="muted" id="leaderBtn">Liderlik</button>
-        <button class="muted" id="settingsBtn">Ayarlar</button>
-        <button class="muted" id="assetsBtn">İkon/Kapak</button>
-      </div>
-
-      <div style="margin-top:10px;color:rgba(255,255,255,0.6);font-size:12px">Dokun veya sürükle ile sola/sağa hareket et.</div>
-    </div>
-  </div>
-
-  <!-- SKIN MENU -->
-  <div id="skinMenu" class="overlay" style="display:none">
-    <div class="panel">
-      <h3>Skin Seç</h3>
-      <div class="row" id="skinList"></div>
-      <div style="margin-top:8px"><button class="muted" id="closeSkin">Kapat</button></div>
-    </div>
-  </div>
-
-  <!-- MODE MENU -->
-  <div id="modeMenu" class="overlay" style="display:none">
-    <div class="panel">
-      <h3>Mod Seç</h3>
-      <div class="row">
-        <button class="big modeBtn" data-mode="easy">Kolay</button>
-        <button class="big modeBtn" data-mode="normal">Normal</button>
-        <button class="big modeBtn" data-mode="hard">Zor</button>
-      </div>
-      <div style="margin-top:8px"><button class="muted" id="closeMode">Kapat</button></div>
-    </div>
-  </div>
-
-  <!-- SETTINGS -->
-  <div id="settingsMenu" class="overlay" style="display:none">
-    <div class="panel">
-      <h3>Ayarlar</h3>
-      <div style="margin:8px 0">
-        <label>Ses: <input id="soundToggle" type="checkbox"/></label>
-      </div>
-      <div style="margin:8px 0">
-        <label>Ses Seviyesi: <input id="volRange" type="range" min="0" max="1" step="0.01"/></label>
-      </div>
-      <div style="margin-top:8px">
-        <button class="muted" id="resetData">Verileri Sıfırla</button>
-        <button class="muted" id="closeSettings">Kapat</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- LEADERBOARD -->
-  <div id="leaderMenu" class="overlay" style="display:none">
-    <div class="panel">
-      <h3>En İyi Skorlar</h3>
-      <div id="leaderList" style="text-align:left;max-height:220px;overflow:auto;margin-top:8px"></div>
-      <div style="margin-top:8px"><button class="muted" id="closeLeader">Kapat</button></div>
-    </div>
-  </div>
-
-  <!-- ICON/COVER MENU -->
-  <div id="assetsMenu" class="overlay" style="display:none">
-    <div class="panel">
-      <h3>Uygulama İkonu & Kapak (placeholder)</h3>
-      <canvas id="iconCanvas" width="512" height="512" style="border:1px solid rgba(255,255,255,0.08);"></canvas>
-      <div style="margin-top:8px"><button class="muted" id="downloadIcon">İndir (512x512)</button></div>
-      <div style="margin-top:10px"><button class="muted" id="closeAssets">Kapat</button></div>
-    </div>
-  </div>
-
+<!-- GİRİŞ MENÜSÜ -->
+<div id="mainMenu">
+    <h1 style="font-size:60px;">Çizgiden Kaçış</h1>
+    <button class="menuBtn" onclick="startGame()">Başla</button>
 </div>
 
+<!-- Oyun Canvas -->
+<canvas id="gameCanvas"></canvas>
+
+<!-- Skor -->
+<div id="scoreBox">Skor: 0<br>En Yüksek: 0</div>
+
+<!-- Mobil Ayarlar -->
+<button id="settingsBtn" onclick="openSettings()">⚙</button>
+
+<!-- Mobil Ayar Menüsü -->
+<div id="settingsMenu">
+    <h2>Ayarlar</h2>
+    <button onclick="resumeGame()" style="background:#4CAF50;color:white;">Devam Et</button>
+    <button onclick="resetGame()" style="background:#2196F3;color:white;">Tekrar Başla</button>
+    <button onclick="goToMenu()" style="background:#FF9800;color:white;">Ana Menü</button>
+    <button onclick="closeSettings()" style="background:#777;color:white;">Kapat</button>
+</div>
+
+<!-- Mobil Kontroller -->
+<div id="mobile-controls" style="display:none;">
+    <button id="leftBtn">◀</button>
+    <button id="rightBtn">▶</button>
+</div>
+
+<!-- Oyun Bitti -->
+<button id="restartBtn" onclick="resetGame()">Tekrar Oyna</button>
+
 <script>
-/* ###########################
-   Gelişmiş Tam Oyun Kodu
-   ########################### */
+/* --- TEMEL DEĞİŞKENLER --- */
+let gameRunning = false;
+let gamePaused = false;
+let gameOver = false;
 
-/* --- Canvas & sizing --- */
-const canvas = document.getElementById('bg');
-const ctx = canvas.getContext('2d');
-function resize(){ canvas.width = innerWidth; canvas.height = innerHeight; }
-resize(); addEventListener('resize', resize);
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
 
-/* --- Game state --- */
-let running=false, paused=false;
-let last=0;
-let delta=0;
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
 
-let score=0, level=1;
-let high = Number(localStorage.getItem('cizgiden_high')||0);
-
-const state = {
-  lives:3,
-  mode:'normal', // easy | normal | hard
-  sound:true,
-  volume:0.6,
-  selectedSkin:0
+let player = {
+    x: canvas.width / 2,
+    y: canvas.height * 0.75,
+    size: 60,
+    emoji: "🐵"
 };
 
-/* --- Skins --- */
-const skins = ['🐵','🐱','🦊','🐼','🐸'];
-function renderSkinOptions(){
-  const list = document.getElementById('skinList'); list.innerHTML='';
-  skins.forEach((s,i)=>{
-    const btn = document.createElement('div');
-    btn.className='skinOption';
-    btn.innerText = s;
-    btn.style.cursor='pointer';
-    btn.onclick = ()=>{ state.selectedSkin=i; player.emoji=s; saveSettings(); closeAll(); document.getElementById('mainMenu').style.display='none'; };
-    list.appendChild(btn);
-  });
-}
-
-/* --- Player & obstacles --- */
-const player = { x:0, y:0, size:80, emoji:skins[state.selectedSkin], speed:700 };
 let obstacles = [];
-let spawnAcc=0;
+let score = 0;
+let highScore = Number(localStorage.getItem("highScore") || 0);
+let moveLeft = false;
+let moveRight = false;
+let speed = 7;
 
-/* --- Audio (simple) --- */
-let audioCtx=null;
-function ensureAudio(){
-  if(audioCtx) return;
-  audioCtx = new (window.AudioContext||window.webkitAudioContext)();
-}
-function sfx(freq=440,dur=0.08,vol=0.05){
-  if(!state.sound) return;
-  ensureAudio();
-  const o=audioCtx.createOscillator(), g=audioCtx.createGain();
-  o.connect(g); g.connect(audioCtx.destination);
-  g.gain.value = vol*state.volume;
-  o.frequency.value = freq; o.type='sine';
-  o.start(); g.gain.exponentialRampToValueAtTime(0.0001,audioCtx.currentTime+dur);
-  setTimeout(()=>o.stop(), dur*1000+10);
-}
+/* --- MOBİL TUŞLAR --- */
+leftBtn.addEventListener("touchstart", () => moveLeft = true);
+leftBtn.addEventListener("touchend", () => moveLeft = false);
 
-/* --- UI refs --- */
-const scoreShow = document.getElementById('scoreShow');
-const levelShow = document.getElementById('levelShow');
-const heartsEl = document.getElementById('hearts');
+rightBtn.addEventListener("touchstart", () => moveRight = true);
+rightBtn.addEventListener("touchend", () => moveRight = false);
 
-/* --- Mobile / Keyboard controls --- */
-let moveLeft=false, moveRight=false;
-const leftBtn = document.getElementById('leftBtn'), rightBtn = document.getElementById('rightBtn');
+/* --- KLAVYE --- */
+document.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowLeft") moveLeft = true;
+    if (e.key === "ArrowRight") moveRight = true;
+});
+document.addEventListener("keyup", (e) => {
+    if (e.key === "ArrowLeft") moveLeft = false;
+    if (e.key === "ArrowRight") moveRight = false;
+});
 
-leftBtn.addEventListener('pointerdown', ()=> moveLeft=true);
-leftBtn.addEventListener('pointerup', ()=> moveLeft=false);
-leftBtn.addEventListener('pointercancel', ()=> moveLeft=false);
-rightBtn.addEventListener('pointerdown', ()=> moveRight=true);
-rightBtn.addEventListener('pointerup', ()=> moveRight=false);
-rightBtn.addEventListener('pointercancel', ()=> moveRight=false);
+/* -------------------- OYUN BAŞLAT -------------------- */
+function startGame() {
+    mainMenu.style.display = "none";
+    scoreBox.style.display = "block";
+    mobile-controls.style.display = "flex";
+    settingsBtn.style.display = "block";
 
-addEventListener('keydown', (e)=>{ if(e.key==='ArrowLeft') moveLeft=true; if(e.key==='ArrowRight') moveRight=true; });
-addEventListener('keyup', (e)=>{ if(e.key==='ArrowLeft') moveLeft=false; if(e.key==='ArrowRight') moveRight=false; });
+    score = 0;
+    obstacles = [];
+    gameOver = false;
+    gameRunning = true;
 
-/* --- Menüler: element refs & bindings --- */
-const mainMenu = document.getElementById('mainMenu');
-const skinMenu = document.getElementById('skinMenu');
-const modeMenu = document.getElementById('modeMenu');
-const settingsMenu = document.getElementById('settingsMenu');
-const leaderMenu = document.getElementById('leaderMenu');
-const assetsMenu = document.getElementById('assetsMenu');
-
-document.getElementById('startBtn').onclick = ()=>{ ensureAudio(); startGame(); };
-document.getElementById('skinBtn').onclick = ()=>{ renderSkinOptions(); skinMenu.style.display='flex'; };
-document.getElementById('closeSkin').onclick = ()=> skinMenu.style.display='none';
-document.getElementById('modeBtn').onclick = ()=> modeMenu.style.display='flex';
-document.getElementById('closeMode').onclick = ()=> modeMenu.style.display='none';
-document.querySelectorAll('.modeBtn').forEach(b=> b.onclick = (e)=>{ setMode(b.dataset.mode); modeMenu.style.display='none'; });
-
-document.getElementById('settingsBtn').onclick = ()=> { settingsMenu.style.display='flex'; loadSettingsUI(); };
-document.getElementById('closeSettings').onclick = ()=> settingsMenu.style.display='none';
-document.getElementById('leaderBtn').onclick = ()=> { renderLeaderboard(); leaderMenu.style.display='flex'; };
-document.getElementById('closeLeader').onclick = ()=> leaderMenu.style.display='none';
-document.getElementById('assetsBtn').onclick = ()=> { drawIconPlaceholder(); assetsMenu.style.display='flex'; };
-document.getElementById('closeAssets').onclick = ()=> assetsMenu.style.display='none';
-
-/* settings UI */
-const soundToggle = document.getElementById('soundToggle'), volRange = document.getElementById('volRange');
-function loadSettingsUI(){ soundToggle.checked = state.sound; volRange.value = state.volume; }
-soundToggle.onchange = ()=>{ state.sound = soundToggle.checked; saveSettings(); };
-volRange.oninput = ()=>{ state.volume = Number(volRange.value); saveSettings(); };
-
-/* reset data */
-document.getElementById('resetData').onclick = ()=>{ if(confirm('Tüm kayıtları sıfırlamak istiyor musun?')){ localStorage.clear(); location.reload(); } };
-
-/* icon download */
-function drawIconPlaceholder(){
-  const c = document.getElementById('iconCanvas');
-  const cx = c.getContext('2d');
-  cx.clearRect(0,0,c.width,c.height);
-  cx.fillStyle='#121212'; cx.fillRect(0,0,c.width,c.height);
-  cx.fillStyle='#ffd700'; cx.fillRect(40,40,c.width-80,c.height-80);
-  cx.fillStyle='#111'; cx.font='200px serif'; cx.textAlign='center'; cx.textBaseline='middle';
-  cx.fillText('🐵', c.width/2, c.height/2);
-}
-document.getElementById('downloadIcon').onclick = ()=>{
-  const c = document.getElementById('iconCanvas');
-  const a = document.createElement('a'); a.href = c.toDataURL('image/png'); a.download='icon-512.png'; a.click();
-};
-
-/* --- Helper: Save / Load settings & leaderboard --- */
-function saveSettings(){ localStorage.setItem('cizgiden_settings', JSON.stringify(state)); }
-function loadSettings(){ const s = localStorage.getItem('cizgiden_settings'); if(s) Object.assign(state, JSON.parse(s)); player.emoji = skins[state.selectedSkin]; }
-loadSettings();
-
-function saveLeaderboard(score){
-  const lb = JSON.parse(localStorage.getItem('cizgiden_lb')||'[]');
-  lb.push({score:Math.floor(score), date: new Date().toLocaleString()});
-  lb.sort((a,b)=>b.score-a.score);
-  while(lb.length>10) lb.pop();
-  localStorage.setItem('cizgiden_lb', JSON.stringify(lb));
-}
-function renderLeaderboard(){
-  const lb = JSON.parse(localStorage.getItem('cizgiden_lb')||'[]');
-  const el = document.getElementById('leaderList');
-  if(lb.length===0) el.innerHTML='<em>Henüz skor yok</em>';
-  else el.innerHTML = lb.map((r,i)=>`${i+1}. ${r.score} — ${r.date}`).join('<br>');
+    loop();
 }
 
-/* --- Mode --- */
-function setMode(m){
-  state.mode = m;
-  if(m==='easy'){ obstacleBaseSpeed = 4; spawnRate = 1100; state.lives=5; }
-  if(m==='normal'){ obstacleBaseSpeed = 6; spawnRate = 900; state.lives=3; }
-  if(m==='hard'){ obstacleBaseSpeed = 9; spawnRate = 700; state.lives=2; }
-  saveSettings();
+/* -------------------- AYAR MENÜSÜ -------------------- */
+function openSettings() {
+    gamePaused = true;
+    gameRunning = false;
+    settingsMenu.style.display = "block";
 }
 
-/* default mode vars */
-let obstacleBaseSpeed = 6;
-let spawnRate = 900;
-
-/* --- Start / Reset / Game Over --- */
-function startGame(){
-  mainMenu.style.display='none';
-  skinMenu.style.display='none';
-  modeMenu.style.display='none';
-  settingsMenu.style.display='none';
-  leaderMenu.style.display='none';
-  assetsMenu.style.display='none';
-
-  // set initial values
-  score=0; level=1; obstacles=[]; spawnAcc=0;
-  running=true; paused=false;
-  if(!state.lives) state.lives = 3;
-  player.size = Math.min(120, Math.max(56, innerWidth*0.12));
-  player.x = (canvas.width - player.size)/2;
-  player.y = canvas.height - player.size - 80;
-  player.emoji = skins[state.selectedSkin] || '🐵';
-  document.getElementById('mobile-controls').style.display = 'flex';
-  document.getElementById('pauseBtn').style.display = 'block';
-  drawHearts();
-  requestAnimationFrame(loop);
-  sfx(880,0.05,0.04);
-  saveSettings();
+function closeSettings() {
+    settingsMenu.style.display = "none";
+    resumeGame();
 }
 
-function resetAllForMenu(){
-  running=false; paused=false;
-  document.getElementById('mobile-controls').style.display='none';
-  document.getElementById('pauseBtn').style.display='none';
-  mainMenu.style.display='flex';
-  saveSettings();
+function resumeGame() {
+    gamePaused = false;
+    gameRunning = true;
+    settingsMenu.style.display = "none";
+    loop();
 }
 
-/* Pause button */
-document.getElementById('pauseBtn').onclick = ()=>{
-  paused = !paused;
-  if(paused){ document.getElementById('pauseMenu').style.display='flex'; }
-  else { document.getElementById('pauseMenu').style.display='none'; requestAnimationFrame(loop); }
-};
-
-/* game over handler */
-function loseLife(){
-  state.lives = Math.max(0, state.lives - 1);
-  drawHearts();
-  sfx(120,0.18,0.08);
-  if(state.lives <= 0) {
-    // final gameover
-    running=false;
-    saveLeaderboard(score);
-    document.getElementById('restartBtn').style.display='block';
-    mainMenu.style.display='none';
-    // show leader menu automatically
-    renderLeaderboard();
-    leaderMenu.style.display='flex';
-    sfx(120,0.6,0.12);
-  }
-}
-function drawHearts(){
-  const hearts = document.getElementById('hearts');
-  hearts.innerHTML = '';
-  for(let i=0;i<state.lives;i++){ const sp = document.createElement('span'); sp.className='heart'; sp.innerText='❤️'; hearts.appendChild(sp); }
+function goToMenu() {
+    location.reload();
 }
 
-/* collision test */
-function isCollide(a,b){ return a.x < b.x + b.w && a.x + a.size > b.x && a.y < b.y + b.h && a.y + a.size > b.y; }
-
-/* --- Obstacle spawn & update --- */
-function spawnObstacle(){
-  const w = Math.min(220, Math.max(110, Math.floor(canvas.width * 0.18)));
-  const x = Math.random()*(canvas.width - w - 20) + 10;
-  const h = 12 + Math.random()*12;
-  const speed = obstacleBaseSpeed + Math.random()*1.2;
-  obstacles.push({x,y:-20,w,h,speed,color: randomColor()});
+/* -------------------- ENGEL -------------------- */
+function spawnObstacle() {
+    obstacles.push({
+        x: Math.random() * (canvas.width - 120),
+        y: -20,
+        w: 120,
+        h: 10,
+        speed: 7
+    });
 }
-function randomColor(){ const r = 120+Math.floor(Math.random()*120); const g=80+Math.floor(Math.random()*120); const b=70+Math.floor(Math.random()*120); return `rgba(${r},${g},${b},0.95)`; }
 
-/* --- Main loop (delta-time based) --- */
-function loop(ts){
-  if(!last) last = ts;
-  delta = (ts - last)/16.67; // 60fps ref
-  last = ts;
-  if(!running || paused){ return; }
+/* -------------------- TEKRAR OYNA -------------------- */
+function resetGame() {
+    restartBtn.style.display = "none";
+    settingsMenu.style.display = "none";
+    startGame();
+}
 
-  // update
-  // player movement
-  const moveSpeed = player.speed * (delta/60); // normalized
-  if(moveLeft) player.x -= moveSpeed;
-  if(moveRight) player.x += moveSpeed;
-  player.x = Math.max(0, Math.min(canvas.width - player.size, player.x));
+/* -------------------- UPDATE -------------------- */
+function update() {
+    if (!gameRunning || gamePaused) return;
 
-  // spawn
-  spawnAcc += (delta*16.67);
-  if(spawnAcc > spawnRate){ spawnAcc = 0; spawnObstacle(); }
+    if (moveLeft) player.x -= speed;
+    if (moveRight) player.x += speed;
 
-  // obstacles
-  for(let i=obstacles.length-1;i>=0;i--){
-    const o = obstacles[i];
-    o.y += o.speed * (delta/60) * 60; // speed px per second
-    if(o.y > canvas.height + 50){ obstacles.splice(i,1); score += 1; if(score%150===0) level++; }
-    else {
-      // collision strict direct overlap threshold 0.2
-      const overlapX = Math.max(0, Math.min(player.x+player.size, o.x+o.w) - Math.max(player.x, o.x));
-      const overlapY = Math.max(0, Math.min(player.y+player.size, o.y+o.h) - Math.max(player.y, o.y));
-      const overlap = overlapX * overlapY;
-      const minArea = Math.min(player.size*player.size, o.w*o.h);
-      if(overlap >= 0.2 * minArea){
-        // immediate life loss and remove obstacle
-        obstacles.splice(i,1);
-        loseLife();
-      }
+    if (player.x < 0) player.x = 0;
+    if (player.x > canvas.width - player.size)
+        player.x = canvas.width - player.size;
+
+    obstacles.forEach((o, i) => {
+        o.y += o.speed;
+
+        if (o.y > canvas.height) {
+            obstacles.splice(i, 1);
+            score++;
+        }
+
+        if (
+            player.x < o.x + o.w &&
+            player.x + player.size > o.x &&
+            player.y < o.y + o.h &&
+            player.y + player.size > o.y
+        ) {
+            endGame();
+        }
+    });
+
+    if (Math.random() < 0.022) spawnObstacle();
+}
+
+/* -------------------- ÇİZİM -------------------- */
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    ctx.font = player.size + "px serif";
+    ctx.fillText(player.emoji, player.x, player.y);
+
+    ctx.fillStyle = "red";
+    obstacles.forEach(o => ctx.fillRect(o.x, o.y, o.w, o.h));
+
+    scoreBox.innerHTML = "Skor: " + score + "<br>En Yüksek: " + highScore;
+}
+
+/* -------------------- OYUN BİTİŞİ -------------------- */
+function endGame() {
+    gameRunning = false;
+    gameOver = true;
+    restartBtn.style.display = "block";
+
+    if (score > highScore) {
+        highScore = score;
+        localStorage.setItem("highScore", highScore);
     }
-  }
-
-  // draw
-  drawScene();
-
-  // UI
-  scoreShow.textContent = Math.floor(score);
-  levelShow.textContent = level;
-
-  // next frame
-  requestAnimationFrame(loop);
 }
 
-/* --- drawScene --- */
-function drawScene(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  // subtle background
-  const g = ctx.createLinearGradient(0,0,0,canvas.height);
-  g.addColorStop(0,'#001018'); g.addColorStop(1,'#000000');
-  ctx.fillStyle = g; ctx.fillRect(0,0,canvas.width,canvas.height);
-
-  // moving stripes for vibe
-  ctx.fillStyle = 'rgba(255,255,255,0.02)';
-  for(let y= (Date.now()/20)%60; y<canvas.height; y+=60) ctx.fillRect(0,y,canvas.width,2);
-
-  // obstacles
-  obstacles.forEach(o=>{
-    ctx.fillStyle = o.color || '#ff5555';
-    ctx.fillRect(o.x, o.y, o.w, o.h);
-  });
-
-  // player emoji
-  ctx.font = `${player.size}px "Segoe UI Emoji", "Noto Color Emoji", serif`;
-  ctx.textBaseline = 'top';
-  ctx.fillText(player.emoji, player.x, player.y);
+/* -------------------- LOOP -------------------- */
+function loop() {
+    update();
+    draw();
+    if (gameRunning && !gamePaused) requestAnimationFrame(loop);
 }
-
-/* --- restart button --- */
-document.getElementById('restartBtn').onclick = ()=>{
-  document.getElementById('restartBtn').style.display='none';
-  state.lives = (state.mode==='easy'?5:(state.mode==='hard'?2:3));
-  drawHearts();
-  startGame();
-};
-
-/* --- initial UI & load --- */
-function init(){
-  // apply loaded settings
-  const s = localStorage.getItem('cizgiden_settings');
-  if(s){ Object.assign(state, JSON.parse(s)); }
-  // set defaults
-  if(!state.mode) state.mode='normal';
-  setMode(state.mode);
-  if(!state.lives) state.lives = (state.mode==='easy'?5:(state.mode==='hard'?2:3));
-  drawHearts();
-  player.emoji = skins[state.selectedSkin]||'🐵';
-  renderSkinOptions();
-  // settings UI init
-  loadSettingsUI();
-}
-init();
-
-/* save settings periodically */
-setInterval(()=> saveSettings(), 5000);
-
 </script>
+
 </body>
 </html>
