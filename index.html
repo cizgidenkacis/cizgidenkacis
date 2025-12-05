@@ -1,257 +1,263 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8">
 <title>Çizgiden Kaçış</title>
-
 <style>
     body {
         margin: 0;
         overflow: hidden;
-        user-select: none;
-        background: #fff;
-        font-family: Arial, sans-serif;
-        touch-action: manipulation;
-    }
-
-    #mainMenu {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        text-align: center;
-        color: black;
-        z-index: 50;
-    }
-
-    .menuBtn {
-        padding: 18px 40px;
-        font-size: 30px;
         background: black;
+        font-family: Arial, sans-serif;
         color: white;
-        border-radius: 12px;
+    }
+
+    #menu, #pauseMenu, #settingsMenu {
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%;
+        height: 100%;
+        background: black;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 10;
+    }
+
+    button {
+        padding: 15px 35px;
+        margin: 12px;
+        font-size: 23px;
         border: none;
+        border-radius: 10px;
         cursor: pointer;
     }
 
-    #scoreBox {
+    #pauseBtn {
         position: absolute;
         top: 15px;
-        left: 15px;
-        padding: 12px 22px;
-        background: rgba(0,0,0,0.2);
-        color: black;
-        font-size: 26px;
-        border-radius: 12px;
-        display: none;
-        z-index: 30;
+        right: 15px;
+        padding: 10px 20px;
+        font-size: 20px;
+        z-index: 6;
     }
 
-    #mobile-controls {
-        position: fixed;
-        bottom: 25px;
+    #mobileControls {
+        position: absolute;
+        bottom: 20px;
         width: 100%;
         display: flex;
-        justify-content: center;
-        gap: 60px;
-        z-index: 40;
-        pointer-events: auto;
+        justify-content: space-between;
+        padding: 0 20px;
+        z-index: 6;
     }
 
-    #mobile-controls button {
-        width: 95px;
-        height: 95px;
-        font-size: 42px;
-        border: none;
-        border-radius: 50%;
-        background: rgba(0,0,0,0.6);
-        color: white;
-        backdrop-filter: blur(5px);
-    }
-
-    #restartBtn {
-        display:none;
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        padding: 16px 36px;
-        background: #ff5c5c;
-        color: white;
-        border: none;
-        font-size: 26px;
-        border-radius: 12px;
-        cursor: pointer;
-        z-index: 60;
+    .mBtn {
+        padding: 20px 35px;
+        font-size: 30px;
+        border-radius: 15px;
     }
 </style>
 </head>
 <body>
 
-<div id="mainMenu">
-    <h1 style="font-size:55px;">Çizgiden Kaçış</h1>
-    <button class="menuBtn" id="startBtn">Başla</button>
+<!-- ANA MENÜ -->
+<div id="menu">
+    <h1 style="font-size:48px; color:white;">ÇİZGİDEN KAÇIŞ</h1>
+    <button onclick="startGame()">BAŞLA</button>
+    <button onclick="openSettings()">Ayarlar</button>
+</div>
+
+<!-- DURDUR MENÜSÜ -->
+<div id="pauseMenu" style="display:none;">
+    <h1>Durduruldu</h1>
+    <button onclick="resumeGame()">Devam Et</button>
+    <button onclick="restartGame()">Tekrar Oyna</button>
+    <button onclick="returnMenu()">Ana Menü</button>
+</div>
+
+<!-- AYARLAR MENÜSÜ -->
+<div id="settingsMenu" style="display:none;">
+    <h2>Ayarlar</h2>
+    <p>Buraya ileride ses, kalite ayarları eklersin.</p>
+    <button onclick="closeSettings()">Geri</button>
+</div>
+
+<button id="pauseBtn" style="display:none;" onclick="pauseGame()">II</button>
+
+<!-- MOBİL KONTROLLER -->
+<div id="mobileControls" style="display:none;">
+    <button class="mBtn" id="leftBtn">◀</button>
+    <button class="mBtn" id="rightBtn">▶</button>
 </div>
 
 <canvas id="gameCanvas"></canvas>
 
-<div id="scoreBox">Skor: 0<br>En Yüksek: 0</div>
-
-<div id="mobile-controls" style="display:none;">
-    <button id="leftBtn">◀</button>
-    <button id="rightBtn">▶</button>
-</div>
-
-<button id="restartBtn">Tekrar Oyna</button>
-
 <script>
-/* --- TEMEL DEĞİŞKENLER --- */
-let gameRunning = false;
-let gameOver = false;
-
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
+resizeCanvas();
 
+let lastTime = 0;
+let gameRunning = false;
+let paused = false;
+
+let player = { x: 200, y: 500, width: 40, height: 40, speed: 300 };
+let obstacles = [];
+let spawnTimer = 0;
+let spawnRate = 900;
+let score = 0;
+let level = 1;
+
+let moveLeft = false;
+let moveRight = false;
+
+window.onresize = resizeCanvas;
 function resizeCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 }
-resizeCanvas();
-window.addEventListener("resize", resizeCanvas);
 
-let player = {
-    x: canvas.width / 2,
-    y: canvas.height * 0.75,
-    size: 60,
-    emoji: "🐵",
-};
+// ENGEL OLUŞTURMA
+function spawnObstacle() {
+    obstacles.push({
+        x: Math.random() * (canvas.width - 40),
+        y: -40,
+        width: 40,
+        height: 40,
+        speed: 280
+    });
+}
 
-let obstacles = [];
-let score = 0;
-let highScore = Number(localStorage.getItem("highScore") || 0);
+// ANA OYUN
+function gameLoop(timestamp) {
+    if (!gameRunning || paused) return;
+    requestAnimationFrame(gameLoop);
 
-let moveLeft = false;
-let moveRight = false;
-let speed = 7;
+    let delta = (timestamp - lastTime) / 1000;
+    lastTime = timestamp;
 
-/* --- MOBİL KONTROLLER --- */
-leftBtn.addEventListener("touchstart", () => moveLeft = true);
-leftBtn.addEventListener("touchend", () => moveLeft = false);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-rightBtn.addEventListener("touchstart", () => moveRight = true);
-rightBtn.addEventListener("touchend", () => moveRight = false);
+    score += delta * 60;
 
-/* --- KLAVYE KONTROLÜ --- */
-document.addEventListener("keydown", (e) => {
+    // LEVEL SİSTEMİ
+    if (score >= level * 150) level++;
+
+    // HAREKET
+    if (moveLeft) player.x -= player.speed * delta;
+    if (moveRight) player.x += player.speed * delta;
+    player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
+
+    // ENGELLER
+    spawnTimer += delta * 1000;
+    if (spawnTimer > spawnRate) {
+        spawnTimer = 0;
+        spawnObstacle();
+    }
+
+    obstacles.forEach(o => {
+        o.y += o.speed * delta;
+
+        ctx.fillStyle = "white";
+        ctx.fillRect(o.x, o.y, o.width, o.height);
+
+        if (isColliding(player, o)) gameOver();
+    });
+
+    obstacles = obstacles.filter(o => o.y < canvas.height + 50);
+
+    // PLAYER
+    ctx.fillStyle = "yellow";
+    ctx.fillRect(player.x, player.y, player.width, player.height);
+
+    // SCORE
+    ctx.fillStyle = "white";
+    ctx.font = "28px Arial";
+    ctx.fillText("Skor: " + Math.floor(score), 20, 40);
+    ctx.fillText("Seviye: " + level, 20, 80);
+}
+
+function isColliding(a, b) {
+    return a.x < b.x + b.width &&
+           a.x + a.width > b.x &&
+           a.y < b.y + b.height &&
+           a.y + a.height > b.y;
+}
+
+// OYUN BAŞLAT
+function startGame() {
+    document.getElementById("menu").style.display = "none";
+    document.getElementById("pauseBtn").style.display = "block";
+    document.getElementById("mobileControls").style.display = "flex";
+
+    resetGame();
+    gameRunning = true;
+    paused = false;
+    requestAnimationFrame(gameLoop);
+}
+
+function resetGame() {
+    player.x = canvas.width / 2 - 20;
+    obstacles = [];
+    score = 0;
+    level = 1;
+}
+
+// DURDUR
+function pauseGame() {
+    paused = true;
+    document.getElementById("pauseMenu").style.display = "flex";
+}
+
+// DEVAM
+function resumeGame() {
+    paused = false;
+    document.getElementById("pauseMenu").style.display = "none";
+    requestAnimationFrame(gameLoop);
+}
+
+// TEKRAR OYNA
+function restartGame() {
+    document.getElementById("pauseMenu").style.display = "none";
+    resetGame();
+    paused = false;
+    requestAnimationFrame(gameLoop);
+}
+
+// ANA MENÜ
+function returnMenu() {
+    location.reload();
+}
+
+// AYARLAR
+function openSettings() {
+    document.getElementById("menu").style.display = "none";
+    document.getElementById("settingsMenu").style.display = "flex";
+}
+function closeSettings() {
+    document.getElementById("settingsMenu").style.display = "none";
+    document.getElementById("menu").style.display = "flex";
+}
+
+// PC KONTROLLERİ
+document.addEventListener("keydown", e => {
     if (e.key === "ArrowLeft") moveLeft = true;
     if (e.key === "ArrowRight") moveRight = true;
 });
-document.addEventListener("keyup", (e) => {
+document.addEventListener("keyup", e => {
     if (e.key === "ArrowLeft") moveLeft = false;
     if (e.key === "ArrowRight") moveRight = false;
 });
 
-/* --- OYUN BAŞLAT --- */
-document.getElementById("startBtn").onclick = startGame;
-document.getElementById("restartBtn").onclick = resetGame;
+// MOBİL KONTROL
+document.getElementById("leftBtn").ontouchstart = () => moveLeft = true;
+document.getElementById("leftBtn").ontouchend = () => moveLeft = false;
 
-function startGame() {
-    console.log("Oyun başlatılıyor...");
+document.getElementById("rightBtn").onttouchstart = () => moveRight = true;
+document.getElementById("rightBtn").onttouchend = () => moveRight = false;
 
-    document.getElementById("mainMenu").style.display = "none";
-    document.getElementById("scoreBox").style.display = "block";
-    document.getElementById("mobile-controls").style.display = "flex";
-
-    gameRunning = true;
-    gameOver = false;
-    score = 0;
-    obstacles = [];
-
-    loop();
-}
-
-/* --- ENGEL --- */
-function spawnObstacle() {
-    obstacles.push({
-        x: Math.random() * (canvas.width - 120),
-        y: -20,
-        w: 120,
-        h: 10,
-        speed: 6
-    });
-}
-
-/* --- OYUN RESET --- */
-function resetGame() {
-    restartBtn.style.display = "none";
-    startGame();
-}
-
-/* --- UPDATE --- */
-function update() {
-    if (!gameRunning || gameOver) return;
-
-    if (moveLeft) player.x -= speed;
-    if (moveRight) player.x += speed;
-
-    if (player.x < 0) player.x = 0;
-    if (player.x > canvas.width - player.size) player.x = canvas.width - player.size;
-
-    obstacles.forEach((o, i) => {
-        o.y += o.speed;
-
-        if (o.y > canvas.height) {
-            obstacles.splice(i, 1);
-            score++;
-        }
-
-        if (
-            player.x < o.x + o.w &&
-            player.x + player.size > o.x &&
-            player.y < o.y + o.h &&
-            player.y + player.size > o.y
-        ) {
-            endGame();
-        }
-    });
-
-    if (Math.random() < 0.025) spawnObstacle();
-}
-
-/* --- ÇİZİM --- */
-function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    ctx.font = player.size + "px serif";
-    ctx.fillText(player.emoji, player.x, player.y);
-
-    ctx.fillStyle = "#ff2b2b";
-    obstacles.forEach(o => {
-        ctx.fillRect(o.x, o.y, o.w, o.h);
-    });
-
-    scoreBox.innerHTML = "Skor: " + score + "<br>En Yüksek: " + highScore;
-}
-
-/* --- GAME OVER --- */
-function endGame() {
-    gameOver = true;
-    gameRunning = false;
-    restartBtn.style.display = "block";
-
-    if (score > highScore) {
-        highScore = score;
-        localStorage.setItem("highScore", highScore);
-    }
-}
-
-/* --- OYUN LOOPU --- */
-function loop() {
-    update();
-    draw();
-    if (gameRunning) requestAnimationFrame(loop);
-}
 </script>
 
 </body>
