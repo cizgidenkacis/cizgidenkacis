@@ -177,9 +177,9 @@ function spawnObstacle() {
     const animalFaces = ["🐶", "🐱", "🐭", "🐹", "🐰", "🐻", "🐼", "🐵", "🐸", "🐯"];
     obstacles.push({
         x: canvas.width,
-        y: Math.random() * (canvas.height - 80),
-        size: 60,
-        emoji: animalFaces[Math.floor(Math.random() * animalFaces.length)],
+        w: Math.random() * 200 + 80,
+        y: Math.random() * canvas.height,
+        h: 8,
         speed: 6 + score * 0.02
     });
 }
