@@ -106,7 +106,7 @@
 
 <div id="mainMenu">
     <h1 style="font-size: 52px; text-shadow: 3px 3px #000;">Çizgiden Kaçış</h1>
-    <button class="menuBtn" onclick="startGame()">Başla</button>
+    <button class="menuBtn" onclick="startGame()()">Başla</button>
 </div>
 
 <canvas id="gameCanvas"></canvas>
@@ -142,7 +142,7 @@ const gravity = 0.8;
 
 restartBtn.onclick = resetGame;
 
-function startGame() {
+function startGame()() {
     mainMenu.style.display = "none";
     scoreBox.style.display = "block";
     pauseBtn.style.display = "block";
